@@ -3,11 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:padi_scan/screens/home_screen.dart';
 import 'package:padi_scan/theme/app_theme.dart';
 
-/// Regresi: `Row` pada `_MenuCepat` sempat memakai
-/// `CrossAxisAlignment.stretch` langsung di dalam `SliverList`. Tinggi
-/// `SliverList` tidak terbatas sehingga `Row` meminta tinggi `Infinity`,
-/// tata letak gagal, dan seluruh isi beranda tidak pernah tergambar.
-/// Perbaikan: bungkus dengan `IntrinsicHeight`.
+/// Pengujian tata letak Beranda (PRD F-02 & S-03).
 void main() {
   Future<void> pumpBeranda(WidgetTester tester, ThemeData tema) async {
     tester.view.physicalSize = const Size(1080, 2263);
@@ -24,12 +20,16 @@ void main() {
     await pumpBeranda(tester, AppTheme.terang);
 
     expect(tester.takeException(), isNull);
-    expect(find.text('Padi Scan'), findsOneWidget);
-    expect(find.text('Periksa daun padi Anda'), findsOneWidget);
+    expect(find.text('Selamat datang'), findsOneWidget);
+    expect(
+      find.text('Pantau kesehatan tanaman padi Anda.'),
+      findsOneWidget,
+    );
+    expect(find.text('Periksa Kesehatan Daun Padi'), findsOneWidget);
+    expect(find.text('Identifikasi Sekarang'), findsOneWidget);
     expect(find.text('Ambil Foto Daun'), findsOneWidget);
     expect(find.text('Pilih dari Galeri'), findsOneWidget);
 
-    // Kartu tindakan utama harus punya tinggi nyata, bukan 0 atau tak hingga.
     final ukuran = tester.getSize(find.byType(Card).first);
     expect(ukuran.height, greaterThan(200));
     expect(ukuran.height.isFinite, isTrue);
@@ -41,6 +41,7 @@ void main() {
     await pumpBeranda(tester, AppTheme.gelap);
 
     expect(tester.takeException(), isNull);
+    expect(find.text('Identifikasi Sekarang'), findsOneWidget);
     expect(find.text('Ambil Foto Daun'), findsOneWidget);
     expect(tester.getSize(find.byType(Card).first).height.isFinite, isTrue);
   });
@@ -60,7 +61,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('Cara pakai'), findsOneWidget);
-    expect(find.text('Riwayat'), findsOneWidget);
+    expect(find.text('Buka Pustaka'), findsOneWidget);
     expect(find.text('Info Penyakit'), findsOneWidget);
   });
 }

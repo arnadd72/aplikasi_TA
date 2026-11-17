@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/database_helper.dart';
+import '../models/catatan_lapangan.dart';
 import '../models/hasil_identifikasi.dart';
 import '../models/penyakit.dart';
 import '../theme/app_tokens.dart';
@@ -8,11 +9,15 @@ import '../utils/format_waktu.dart';
 import '../widgets/komponen.dart';
 import 'rekomendasi_screen.dart';
 
-/// Halaman hasil identifikasi (F-04) dan pintu ke rekomendasi (F-05).
+/// Halaman Hasil Identifikasi sesuai PRD F-06, F-07, dan S-07.
 ///
-/// Bila keyakinan berada di bawah ambang batas, aturan R5 menandai hasil
-/// sebagai tidak dikenali dan layar menampilkan panduan pengambilan ulang
-/// foto (F-06).
+/// Elemen utama:
+/// 1. Foto daun yang dianalisis.
+/// 2. Nama penyakit teratas sebagai elemen paling menonjol ("Kemungkinan: ...").
+/// 3. Skor keyakinan model sebagai informasi sekunder.
+/// 4. Penjelasan singkat & daftar gejala umum.
+/// 5. Pilihan menyimpan catatan & mengaitkan hasil ke Lahan ("Simpan Hasil").
+/// 6. Tombol "Lihat Penanganan" / rekomendasi dan "Identifikasi Foto Lain".
 class HasilScreen extends StatefulWidget {
   const HasilScreen({super.key, required this.hasil});
 
@@ -24,19 +29,29 @@ class HasilScreen extends StatefulWidget {
 
 class _HasilScreenState extends State<HasilScreen> {
   Penyakit? _penyakit;
+  List<Petak> _daftarLahan = const [];
+  int? _idPetakTerpilih;
+  final TextEditingController _catatanController = TextEditingController();
   bool _memuat = true;
+  bool _menyimpan = false;
 
   @override
   void initState() {
     super.initState();
-    _muatPenyakit();
+    _idPetakTerpilih = widget.hasil.idPetak;
+    _muatData();
   }
 
-  Future<void> _muatPenyakit() async {
+  @override
+  void dispose() {
+    _catatanController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _muatData() async {
     Penyakit? p;
+    List<Petak> lahan = const [];
     if (!widget.hasil.tidakDikenali && widget.hasil.idPenyakit.isNotEmpty) {
-      // Kegagalan basis data tidak boleh mengunci layar pada indikator
-      // memuat. Nama kelas mentah tetap ditampilkan apa adanya.
       try {
         p = await DatabaseHelper.instance.penyakitById(widget.hasil.idPenyakit);
       } on Object catch (e) {
@@ -44,11 +59,65 @@ class _HasilScreenState extends State<HasilScreen> {
         p = null;
       }
     }
+    try {
+      lahan = await DatabaseHelper.instance.semuaPetak();
+    } on Object catch (e) {
+      debugPrint('[Hasil] gagal memuat lahan: $e');
+    }
     if (!mounted) return;
     setState(() {
       _penyakit = p;
+      _daftarLahan = lahan;
       _memuat = false;
     });
+  }
+
+  Future<void> _simpanHasil() async {
+    final idRiwayat = widget.hasil.idRiwayat;
+    if (idRiwayat == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Hasil pemeriksaan telah tersimpan.')),
+      );
+      return;
+    }
+    setState(() => _menyimpan = true);
+    try {
+      await DatabaseHelper.instance.perbaruiDetailRiwayat(
+        idRiwayat: idRiwayat,
+        idPetak: _idPetakTerpilih,
+        ubahPetak: true,
+        catatanPengguna: _catatanController.text,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Hasil dan catatan berhasil disimpan ke Riwayat.'),
+        ),
+      );
+    } on Object catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal menyimpan catatan: $e')));
+    } finally {
+      if (mounted) setState(() => _menyimpan = false);
+    }
+  }
+
+  void _bukaRekomendasi() {
+    final p =
+        _penyakit ??
+        Penyakit(
+          idPenyakit: widget.hasil.idPenyakit,
+          labelModel: widget.hasil.idPenyakit,
+          nama: Penyakit.namaDariId(widget.hasil.idPenyakit),
+          namaLatin: '-',
+          penyebab: '-',
+          gejala: Penyakit.penjelasanDariId(widget.hasil.idPenyakit),
+        );
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => RekomendasiScreen(penyakit: p)),
+    );
   }
 
   @override
@@ -61,9 +130,9 @@ class _HasilScreenState extends State<HasilScreen> {
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(
+                AppSpacing.horizontal,
                 AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.md,
+                AppSpacing.horizontal,
                 AppSpacing.xl,
               ),
               child: Column(
@@ -90,6 +159,39 @@ class _HasilScreenState extends State<HasilScreen> {
                   else
                     _KartuHasil(hasil: hasil, penyakit: _penyakit),
                   const SizedBox(height: AppSpacing.md),
+                  if (!hasil.tidakDikenali) ...[
+                    Semantics(
+                      button: true,
+                      label: (_penyakit?.isSehat ?? hasil.idPenyakit == 'normal')
+                          ? 'Lihat saran pemeliharaan'
+                          : 'Lihat rekomendasi penanganan',
+                      child: FilledButton.icon(
+                        onPressed: _bukaRekomendasi,
+                        icon: Icon(
+                          (_penyakit?.isSehat ?? hasil.idPenyakit == 'normal')
+                              ? Icons.verified_outlined
+                              : Icons.medical_information_outlined,
+                        ),
+                        label: Text(
+                          (_penyakit?.isSehat ?? hasil.idPenyakit == 'normal')
+                              ? 'Lihat Saran Pemeliharaan'
+                              : 'Lihat Rekomendasi Penanganan',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.smPlus),
+                  ],
+                  if (hasil.idRiwayat != null) ...[
+                    _KartuSimpanLahanDanCatatan(
+                      daftarLahan: _daftarLahan,
+                      idPetakTerpilih: _idPetakTerpilih,
+                      onPilihPetak: (v) => setState(() => _idPetakTerpilih = v),
+                      catatanController: _catatanController,
+                      menyimpan: _menyimpan,
+                      onSimpan: _simpanHasil,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
                   _CatatanTeknis(hasil: hasil),
                   const SizedBox(height: AppSpacing.md),
                   _TabelProbabilitas(
@@ -97,33 +199,6 @@ class _HasilScreenState extends State<HasilScreen> {
                     terpilih: hasil.idPenyakit,
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  if (!hasil.tidakDikenali && _penyakit != null) ...[
-                    Semantics(
-                      button: true,
-                      label: _penyakit!.isSehat
-                          ? 'Lihat saran pemeliharaan'
-                          : 'Lihat rekomendasi penanganan',
-                      child: FilledButton.icon(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                RekomendasiScreen(penyakit: _penyakit!),
-                          ),
-                        ),
-                        icon: Icon(
-                          _penyakit!.isSehat
-                              ? Icons.verified_outlined
-                              : Icons.medical_information_outlined,
-                        ),
-                        label: Text(
-                          _penyakit!.isSehat
-                              ? 'Lihat Saran Pemeliharaan'
-                              : 'Lihat Rekomendasi Penanganan',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm + 2),
-                  ],
                   OutlinedButton.icon(
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.refresh_rounded),
@@ -136,6 +211,10 @@ class _HasilScreenState extends State<HasilScreen> {
   }
 }
 
+/// Kartu hasil utama sesuai PRD F-07 & S-07:
+/// - Nama penyakit sebagai elemen paling menonjol
+/// - Skor keyakinan sebagai informasi sekunder
+/// - Penjelasan singkat & daftar gejala umum
 class _KartuHasil extends StatelessWidget {
   const _KartuHasil({required this.hasil, required this.penyakit});
 
@@ -146,6 +225,7 @@ class _KartuHasil extends StatelessWidget {
   Widget build(BuildContext context) {
     final sehat = (penyakit?.isSehat ?? false) || hasil.idPenyakit == 'normal';
     final nama = penyakit?.nama ?? Penyakit.namaDariId(hasil.idPenyakit);
+    final kode = Penyakit.kodeDariId(hasil.idPenyakit);
     final yakin = hasil.keyakinanPersen;
     final warna = context.warnaKeyakinan(yakin);
     final teksStatus = yakin >= 85
@@ -153,10 +233,11 @@ class _KartuHasil extends StatelessWidget {
         : yakin >= 70
         ? 'Keyakinan cukup'
         : 'Keyakinan rendah';
+    final gejalaButir = Penyakit.gejalaDaftarDariId(hasil.idPenyakit);
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md + 2),
+        padding: const EdgeInsets.all(AppSpacing.horizontal),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -167,7 +248,7 @@ class _KartuHasil extends StatelessWidget {
                   child: Text(
                     sehat
                         ? 'Daun terdeteksi sehat'
-                        : 'Penyakit teridentifikasi',
+                        : 'Kemungkinan teridentifikasi',
                     style: context.teks.titleMedium,
                   ),
                 ),
@@ -181,14 +262,25 @@ class _KartuHasil extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
-            if (hasil.aturan.isNotEmpty) ...[
-              Lencana(
-                teks: 'Aturan ${hasil.aturan}',
-                warna: warna,
-                ikon: Icons.rule_outlined,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                if (kode != '-')
+                  Lencana(
+                    teks: 'Kelas $kode',
+                    warna: context.palet.primary,
+                    ikon: Icons.label_outline,
+                  ),
+                if (hasil.aturan.isNotEmpty)
+                  Lencana(
+                    teks: 'Aturan ${hasil.aturan}',
+                    warna: warna,
+                    ikon: Icons.rule_outlined,
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.smPlus),
             Text(
               nama,
               style: context.teks.headlineMedium?.copyWith(color: warna),
@@ -202,7 +294,12 @@ class _KartuHasil extends StatelessWidget {
                 ),
               ),
             ],
-            const SizedBox(height: AppSpacing.md + 2),
+            const SizedBox(height: AppSpacing.smPlus),
+            Text(
+              Penyakit.penjelasanDariId(hasil.idPenyakit),
+              style: context.teks.bodyMedium,
+            ),
+            const SizedBox(height: AppSpacing.md),
             Semantics(
               label:
                   'Tingkat keyakinan '
@@ -215,7 +312,7 @@ class _KartuHasil extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            'Tingkat keyakinan',
+                            'Skor keyakinan model (identifikasi awal)',
                             style: context.teks.labelMedium,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -235,19 +332,17 @@ class _KartuHasil extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: AppSpacing.sm),
+                    const SizedBox(height: AppSpacing.xs),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(AppRadius.pil),
                       child: LinearProgressIndicator(
                         value: hasil.keyakinan.clamp(0.0, 1.0),
-                        minHeight: 10,
+                        minHeight: 8,
                         color: warna,
                         backgroundColor: context.palet.muted,
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.sm),
-                    // Label sumbu. Diberi `Expanded` di tengah agar tidak
-                    // pernah meluber saat ukuran teks sistem diperbesar.
+                    const SizedBox(height: AppSpacing.xs),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -268,6 +363,35 @@ class _KartuHasil extends StatelessWidget {
                 ),
               ),
             ),
+            if (gejalaButir.isNotEmpty) ...[
+              const Divider(height: AppSpacing.lg),
+              Text(
+                sehat ? 'Ciri kondisi daun' : 'Gejala umum yang perlu dicocokkan',
+                style: context.teks.titleSmall,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              for (final butir in gejalaButir)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Icon(
+                          Icons.check_circle_outline,
+                          size: 16,
+                          color: context.palet.primary,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(butir, style: context.teks.bodySmall),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ],
         ),
       ),
@@ -275,16 +399,18 @@ class _KartuHasil extends StatelessWidget {
   }
 }
 
+/// Kartu ketidakpastian sesuai PRD F-06 & S-07:
+/// Teks wajib: "Hasil belum cukup meyakinkan. Coba ambil foto daun yang lebih jelas."
 class _KartuTidakDikenali extends StatelessWidget {
   const _KartuTidakDikenali({required this.hasil});
 
   final HasilIdentifikasi hasil;
 
   static const _panduan = <String>[
-    'Ambil dari jarak 15-25 cm sehingga seluruh daun masuk bidang gambar.',
-    'Pastikan pencahayaan cukup dan tidak ada bayangan tajam.',
-    'Hindari latar yang ramai atau daun lain yang ikut terpotret.',
-    'Fokuskan kamera pada bagian yang menunjukkan gejala.',
+    'Ambil foto dalam kondisi cukup cahaya dan hindari bayangan tajam.',
+    'Pastikan satu helai daun yang bergejala menjadi objek utama.',
+    'Fokuskan kamera dari jarak 15–25 cm agar permukaan daun tidak buram.',
+    'Hindari latar belakang yang terlalu ramai oleh daun atau tanah lain.',
   ];
 
   @override
@@ -293,7 +419,7 @@ class _KartuTidakDikenali extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md + 2),
+        padding: const EdgeInsets.all(AppSpacing.horizontal),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -315,13 +441,19 @@ class _KartuTidakDikenali extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Tingkat keyakinan model hanya '
-              '${hasil.keyakinanPersen.toStringAsFixed(2)}%. Sistem tidak '
-              'menampilkan diagnosis agar tidak menyesatkan.',
-              style: context.teks.bodyMedium,
+              'Hasil belum cukup meyakinkan. Coba ambil foto daun yang lebih jelas.',
+              style: context.teks.titleMedium,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Skor tertinggi model hanya '
+              '${hasil.keyakinanPersen.toStringAsFixed(2)}% (di bawah ambang '
+              'batas 70%). Aplikasi tidak menampilkan diagnosis agar tidak '
+              'menyesatkan tindakan penanganan.',
+              style: context.teks.bodySmall,
             ),
             const Divider(height: AppSpacing.lg),
-            Text('Coba ambil ulang foto', style: context.teks.titleSmall),
+            Text('Panduan foto ulang', style: context.teks.titleSmall),
             const SizedBox(height: AppSpacing.sm),
             for (final p in _panduan)
               Padding(
@@ -343,12 +475,77 @@ class _KartuTidakDikenali extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm + 2),
-                    Expanded(child: Text(p, style: context.teks.bodyMedium)),
+                    Expanded(child: Text(p, style: context.teks.bodySmall)),
                   ],
                 ),
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Kartu untuk mengaitkan hasil ke Lahan dan menambahkan catatan pengguna (PRD F-09 & S-07).
+class _KartuSimpanLahanDanCatatan extends StatelessWidget {
+  const _KartuSimpanLahanDanCatatan({
+    required this.daftarLahan,
+    required this.idPetakTerpilih,
+    required this.onPilihPetak,
+    required this.catatanController,
+    required this.menyimpan,
+    required this.onSimpan,
+  });
+
+  final List<Petak> daftarLahan;
+  final int? idPetakTerpilih;
+  final ValueChanged<int?> onPilihPetak;
+  final TextEditingController catatanController;
+  final bool menyimpan;
+  final VoidCallback onSimpan;
+
+  @override
+  Widget build(BuildContext context) {
+    return KartuBagian(
+      judul: 'Simpan ke Lahan & Catatan',
+      ikon: Icons.bookmark_added_outlined,
+      anak: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DropdownButtonFormField<int?>(
+            initialValue: idPetakTerpilih,
+            decoration: const InputDecoration(
+              labelText: 'Kaitkan dengan lahan (opsional)',
+            ),
+            items: [
+              const DropdownMenuItem<int?>(
+                value: null,
+                child: Text('Tanpa lahan'),
+              ),
+              for (final l in daftarLahan)
+                DropdownMenuItem<int?>(
+                  value: l.idPetak,
+                  child: Text(l.nama),
+                ),
+            ],
+            onChanged: onPilihPetak,
+          ),
+          const SizedBox(height: AppSpacing.smPlus),
+          TextField(
+            controller: catatanController,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              labelText: 'Catatan pengamatan (opsional)',
+              hintText: 'Contoh: Ditemukan di sudut petak dekat saluran air',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.smPlus),
+          OutlinedButton.icon(
+            onPressed: menyimpan ? null : onSimpan,
+            icon: const Icon(Icons.save_outlined),
+            label: Text(menyimpan ? 'Menyimpan…' : 'Simpan Hasil'),
+          ),
+        ],
       ),
     );
   }
@@ -363,7 +560,7 @@ class _TabelProbabilitas extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return KartuBagian(
-      judul: 'Probabilitas setiap kelas',
+      judul: 'Skor setiap kelas (0–100%)',
       ikon: Icons.bar_chart_rounded,
       anak: Column(
         children: [
@@ -385,8 +582,8 @@ class _TabelProbabilitas extends StatelessWidget {
                               Penyakit.namaDariId(p.idPenyakit),
                               style: context.teks.bodySmall?.copyWith(
                                 fontWeight: p.idPenyakit == terpilih
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
                                 color: p.idPenyakit == terpilih
                                     ? context.palet.foreground
                                     : context.palet.mutedForeground,
@@ -396,7 +593,7 @@ class _TabelProbabilitas extends StatelessWidget {
                           Text(
                             '${p.persen.toStringAsFixed(2)}%',
                             style: context.teks.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                               color: p.idPenyakit == terpilih
                                   ? context.palet.primary
                                   : context.palet.mutedForeground,
@@ -423,7 +620,8 @@ class _TabelProbabilitas extends StatelessWidget {
             ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Semua batang memakai skala absolut 0–100%.',
+            'Nilai softmax adalah skor keyakinan model pada empat kelas yang '
+            'dilatih, bukan jaminan kepastian diagnosis.',
             style: context.teks.labelSmall,
           ),
         ],
@@ -440,7 +638,7 @@ class _CatatanTeknis extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return KartuBagian(
-      judul: 'Catatan teknis',
+      judul: 'Catatan teknis & batasan AI',
       ikon: Icons.memory_rounded,
       anak: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,8 +668,9 @@ class _CatatanTeknis extends StatelessWidget {
           const BarisLabelNilai(label: 'Model', nilai: 'MobileNetV2, TFLite'),
           const Divider(height: AppSpacing.lg),
           Text(
-            'Hasil identifikasi bersifat bantuan awal, bukan pengganti '
-            'pemeriksaan penyuluh pertanian atau laboratorium.',
+            'Hasil AI merupakan alat bantu pengambilan keputusan awal dan '
+            'tidak menggantikan pemeriksaan penyuluh pertanian (PPL/POPT) '
+            'atau laboratorium.',
             style: context.teks.bodySmall,
           ),
         ],

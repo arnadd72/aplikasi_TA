@@ -1,14 +1,24 @@
 import 'package:flutter/material.dart';
 
+import '../data/pengaturan.dart';
 import '../models/penyakit.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/komponen.dart';
 
-/// Halaman rekomendasi penanganan (F-05).
+/// Halaman Rekomendasi Penanganan & Detail Penyakit sesuai PRD F-08, F-10,
+/// S-08, dan S-15.
 ///
-/// Urutan mengikuti pengelolaan hama terpadu: kultur teknis dan pencegahan
-/// didahulukan sebelum pengendalian hayati dan kimia (subbab 2.2.2).
-/// Hanya bahan aktif tanpa merek dagang dan dosis (NF-05).
+/// Struktur informasi 10 butir PRD F-08:
+/// 1. Nama penyakit & foto gejala asli
+/// 2. Penjelasan singkat
+/// 3. Gejala utama
+/// 4. Penyebab & faktor pendukung
+/// 5. Langkah pengamatan lanjutan
+/// 6. Pencegahan
+/// 7. Pengendalian kultur teknis (diprioritaskan)
+/// 8. Pengendalian hayati
+/// 9. Informasi pengendalian kimia (hanya bahan aktif, tanpa merek & dosis)
+/// 10. Sumber referensi & tanggal peninjauan
 class RekomendasiScreen extends StatelessWidget {
   const RekomendasiScreen({super.key, required this.penyakit});
 
@@ -26,12 +36,28 @@ class RekomendasiScreen extends StatelessWidget {
         title: Text(
           penyakit.isSehat ? 'Saran Pemeliharaan' : 'Rekomendasi Penanganan',
         ),
+        actions: [
+          ValueListenableBuilder<Set<String>>(
+            valueListenable: PengaturanStore.instance.bookmarkPenyakit,
+            builder: (context, markah, _) {
+              final disimpan = markah.contains(penyakit.idPenyakit);
+              return IconButton(
+                tooltip: disimpan ? 'Hapus dari tersimpan' : 'Simpan panduan',
+                onPressed: () => PengaturanStore.instance
+                    .toggleBookmarkPenyakit(penyakit.idPenyakit),
+                icon: Icon(
+                  disimpan ? Icons.bookmark_rounded : Icons.bookmark_border,
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
+          AppSpacing.horizontal,
           AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.md,
+          AppSpacing.horizontal,
           AppSpacing.xl,
         ),
         children: [
@@ -51,6 +77,28 @@ class RekomendasiScreen extends StatelessWidget {
             _PeringatanBahanAktif(),
             const SizedBox(height: AppSpacing.md),
           ],
+          _AccordionBagian(
+            judul: 'Langkah Pengamatan & Pencegahan',
+            ikon: Icons.visibility_outlined,
+            terbukaAwal: false,
+            anak: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _BagianTeks(
+                  label: 'Langkah pengamatan lanjutan',
+                  isi: penyakit.langkahPengamatan,
+                ),
+                const SizedBox(height: AppSpacing.smPlus),
+                _BagianTeks(
+                  label: 'Faktor pendukung',
+                  isi: penyakit.faktorPendukung,
+                ),
+                const SizedBox(height: AppSpacing.smPlus),
+                _BagianTeks(label: 'Pencegahan', isi: penyakit.pencegahan),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
           if (kultur.isNotEmpty) ...[
             const KepalaBagian(
               nomor: '1',
@@ -113,7 +161,8 @@ class RekomendasiScreen extends StatelessWidget {
   }
 }
 
-/// Ringkasan penyakit: nama, nama latin, penyebab, gejala.
+/// Ringkasan penyakit: foto gejala asli, kode kelas, nama, nama ilmiah,
+/// penjelasan singkat, penyebab, dan gejala.
 class _KepalaPenyakit extends StatelessWidget {
   const _KepalaPenyakit({required this.penyakit});
 
@@ -126,41 +175,120 @@ class _KepalaPenyakit extends StatelessWidget {
         : context.palet.destructive;
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md + 2),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Image.asset(
+              penyakit.pathGambar,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => ColoredBox(
+                color: context.palet.muted,
+                child: Center(
+                  child: Icon(
+                    Icons.eco_outlined,
+                    size: 48,
+                    color: context.palet.primary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.horizontal),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(penyakit.nama, style: context.teks.headlineSmall),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (penyakit.kodeKelas != '-')
+                            Text(
+                              'Kelas ${penyakit.kodeKelas}',
+                              style: context.teks.labelSmall?.copyWith(
+                                color: context.palet.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          Text(
+                            penyakit.nama,
+                            style: context.teks.headlineSmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Lencana(
+                      teks: penyakit.isSehat ? 'Sehat' : 'Bergejala',
+                      warna: warna,
+                      ikon: penyakit.isSehat
+                          ? Icons.eco_outlined
+                          : Icons.coronavirus_outlined,
+                    ),
+                  ],
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Lencana(
-                  teks: penyakit.isSehat ? 'Sehat' : 'Bergejala',
-                  warna: warna,
-                  ikon: penyakit.isSehat
-                      ? Icons.eco_outlined
-                      : Icons.coronavirus_outlined,
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  penyakit.namaLatin,
+                  style: context.teks.bodySmall?.copyWith(
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.smPlus),
+                Text(
+                  penyakit.penjelasanSingkat,
+                  style: context.teks.bodyMedium,
+                ),
+                const Divider(height: AppSpacing.lg),
+                _BagianTeks(label: 'Penyebab', isi: penyakit.penyebab),
+                const SizedBox(height: AppSpacing.smPlus),
+                _BagianTeks(label: 'Gejala utama', isi: penyakit.gejala),
+                const SizedBox(height: AppSpacing.smPlus),
+                Text(
+                  'Ditinjau pada: ${penyakit.tanggalPeninjauan} · '
+                  'Sumber: BPTP, PhilRice, Pacific Pests (Jackson, 2025)',
+                  style: context.teks.labelSmall,
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              penyakit.namaLatin,
-              style: context.teks.bodySmall?.copyWith(
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _BagianTeks(label: 'Penyebab', isi: penyakit.penyebab),
-            const SizedBox(height: AppSpacing.sm + 4),
-            _BagianTeks(label: 'Gejala', isi: penyakit.gejala),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class _AccordionBagian extends StatelessWidget {
+  const _AccordionBagian({
+    required this.judul,
+    required this.ikon,
+    required this.anak,
+    this.terbukaAwal = false,
+  });
+
+  final String judul;
+  final IconData ikon;
+  final Widget anak;
+  final bool terbukaAwal;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExpansionTile(
+      initiallyExpanded: terbukaAwal,
+      leading: Icon(ikon, size: AppIkon.sedang),
+      title: Text(judul, style: context.teks.titleMedium),
+      childrenPadding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        0,
+        AppSpacing.md,
+        AppSpacing.md,
+      ),
+      children: [anak],
     );
   }
 }
@@ -180,7 +308,8 @@ class _BagianTeks extends StatelessWidget {
           label.toUpperCase(),
           style: context.teks.labelSmall?.copyWith(
             color: context.palet.primary,
-            letterSpacing: 0.8,
+            letterSpacing: 0.6,
+            fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: AppSpacing.xs),
@@ -199,10 +328,10 @@ class _PeringatanBahanAktif extends StatelessWidget {
       judul: 'Tentang bahan aktif',
       isi:
           'Rekomendasi pengendalian kimia hanya mencantumkan bahan aktif '
-          'tanpa merek dagang dan tanpa dosis. Ikuti petunjuk pada label '
-          'kemasan serta ketentuan Undang-Undang Nomor 22 Tahun 2019 tentang '
-          'Sistem Budi Daya Pertanian Berkelanjutan. Untuk pemilihan produk '
-          'dan takaran, konsultasikan dengan penyuluh pertanian setempat.',
+          'tanpa merek dagang dan tanpa dosis otomatis. Ikuti petunjuk pada '
+          'label kemasan serta ketentuan Undang-Undang Nomor 22 Tahun 2019 '
+          'tentang Sistem Budi Daya Pertanian Berkelanjutan. Sesuaikan '
+          'tindakan dengan kondisi lapangan bersama penyuluh pertanian.',
     );
   }
 }
@@ -261,10 +390,9 @@ class _ButirRekomendasi extends StatelessWidget {
                   const SizedBox(width: 5),
                   Expanded(
                     child: Text(
-                      'Sumber: ${rekomendasi.sumber}',
-                      style: context.teks.labelSmall?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+                      'Sumber: ${rekomendasi.sumber} · '
+                      'Ditinjau ${rekomendasi.ditinjauPada}',
+                      style: context.teks.labelSmall,
                     ),
                   ),
                 ],

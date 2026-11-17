@@ -1,95 +1,42 @@
-# Penyimpangan dari MASTER.md — alasan dan keputusan
+# Design System Overrides — Padi Scan (Modern Agricultural Utility)
 
-Berkas ini mencatat setiap penyimpangan dari
-[MASTER.md](./MASTER.md), sesuai aturan skill `ui-ux-pro-max`
-("MASTER.md adalah sumber kebenaran global; aturan di berkas ini
-menggantikannya untuk proyek ini").
+Dokumen ini mencatat penyesuaian di atas `MASTER.md` berdasarkan spesifikasi **PRD v1.0 — Modern Agricultural Utility / Clean Agricultural Utility** (Bagian 4.2, 4.3, dan 9.1).
 
-## 1. Tipografi: Fira Code + Fira Sans → Plus Jakarta Sans
+## 1. Palet Warna (PRD Bagian 9.1)
 
-**MASTER.md menetapkan:** Heading `Fira Code`, Body `Fira Sans`
-(mood: *dashboard, data, analytics, code, technical, precise*).
-
-**Keputusan:** diganti dengan **Plus Jakarta Sans** (pasangan
-"Friendly SaaS" dari basis data `typography.csv`).
-
-**Alasan:**
-
-1. Fira Code adalah font *monospace* untuk kode. Sebagai judul pada
-   aplikasi konsumen, hurufnya mengurangi keterbacaan judul berbahasa
-   Indonesia yang panjang (mis. "Identifikasi Penyakit Daun Padi").
-2. Mood "dashboard/data/analytics" dari hasil pencarian `--design-system`
-   muncul karena kata kunci "agriculture" memetakan kategori ke
-   *Agriculture/Farm Tech*. Pengguna aplikasi adalah petani, bukan analis
-   data, sehingga mood yang tepat adalah *friendly, approachable, readable*.
-3. Plus Jakarta Sans adalah rupa huruf Indonesia (dibuat untuk Jakarta),
-   mendukung seluruh aksara Latin dengan diakritik, dan tersedia dalam
-   bobot 400–800 — cukup untuk membangun hierarki tipe tanpa menambah
-   keluarga font kedua.
-4. Dipilih pasangan font **lokal** (bukan Google Fonts saat berjalan) agar
-   NF-01 (identifikasi sepenuhnya offline) tetap terpenuhi. Tidak ada
-   permintaan jaringan saat aplikasi dijalankan.
-
-**Konsekuensi:** tidak ada `@import` Google Fonts pada aplikasi Flutter;
-berkas `.ttf` disimpan di `assets/fonts/` dan didaftarkan di `pubspec.yaml`.
-
-## 2. Mode gelap diaktifkan
-
-**MASTER.md menyatakan:** `Mode Support: Light supported | Dark supported`,
-tetapi versi awal aplikasi hanya menyediakan tema terang.
-
-**Keputusan:** kedua mode disediakan, dengan palet terpisah.
-
-**Alasan:** daftar periksa pradeliver menuntut pengujian kontras pada kedua
-mode secara terpisah. Hijau `#15803D` dari MASTER.md hanya mencapai kontras
-yang cukup di atas latar terang; di atas latar gelap nilainya diturunkan
-kontrasnya sehingga memakai `#4ADE80`. Detail palet: `lib/theme/app_tokens.dart`.
-
-## 3. Warna status ditambahkan
-
-**MASTER.md tidak menyebut** warna *success* dan *warning* secara eksplisit;
-warna Destructive ada.
-
-**Keputusan:** dua peran tambahan pada `AppPalet`:
-
-| Peran | Terang | Gelap | Sumber |
+| Token | Hex (Terang) | Hex (Gelap) | Fungsi |
 |---|---|---|---|
-| `success` | `#15803D` | `#4ADE80` | Primary MASTER.md |
-| `warning` | `#A16207` | `#FACC15` | Accent MASTER.md |
+| Primary | `#176B4D` | `#6CC4A1` | Tombol dan aksi utama |
+| Primary Dark | `#123D32` | `#BCE0CB` | Heading penting dan elemen navigasi |
+| Background | `#F7F8F4` | `#121815` | Latar utama |
+| Surface / Card | `#FFFFFF` | `#1B231F` | Kartu dan komponen |
+| Border | `#E0E6DF` | `#2E3B34` | Batas elemen |
+| Text Primary | `#17251E` | `#E9EFEA` | Teks utama |
+| Text Secondary | `#56655C` (`#627168` PRD, disesuaikan sedikit untuk kontras di atas `muted`) | `#A3B2AA` | Teks pendukung ($\ge 4,5:1$) |
+| Warning | `#A76516` | `#F3B359` | Kondisi perlu perhatian |
+| Danger | `#B42318` | `#F97066` | Kesalahan dan penghapusan |
+| Accent | `#DCE9BD` | `#2B3B24` | Penekanan ringan |
 
-**Alasan:** layar hasil identifikasi (F-04) harus menyampaikan tingkat
-keyakinan, dan aturan R5 memakai ambang 70%. Warna saja tidak boleh menjadi
-satu-satunya penanda, sehingga setiap status selalu disertai teks
-("Tingkat keyakinan 82,14%") dan label kata pada lencana. Palet tetap
-memakai nilai dari MASTER.md, tidak mengarang warna baru.
+## 2. Tipografi & Skala Ukuran (PRD Bagian 9.1)
 
-## 4. Pola halaman tidak diikuti apa adanya
+Font lokal: `PlusJakartaSans` (kompatibel metrik dengan Inter/Roboto dan dibundel offline untuk memenuhi NF-01).
 
-**MASTER.md menetapkan pola** *Feature-Rich Showcase* dengan urutan
-Hero → Feature grid → Use cases → Social proof → CTA.
+| Komponen | Ukuran | Ketebalan |
+|---|---|---|
+| Heading utama | `26sp` | Semibold (`w600`) |
+| Heading halaman | `22sp` | Semibold (`w600`) |
+| Judul section | `18sp` | Semibold (`w600`) |
+| Judul kartu | `16sp` | Semibold (`w600`) |
+| Body | `16sp` | Regular (`w400`) |
+| Teks pendukung | `14sp` | Regular (`w400`) |
+| Caption | `12–13sp` | Medium (`w500`) |
+| Tombol utama | `16sp` | Semibold (`w600`) |
 
-**Keputusan:** tidak diterapkan.
+## 3. Token Tata Letak (PRD Bagian 9.1)
 
-**Alasan:** pola itu adalah pola halaman pendaratan pemasaran. Padi Scan
-adalah alat sekali pakai: pengguna membuka aplikasi, langsung memotret
-daun, lalu membaca hasil. Menyisipkan bagian hero dan bukti sosial akan
-menunda tindakan utama. Struktur yang dipakai tetap memenuhi prinsip
-konversinya (satu pesan utama per kartu, CTA utama berulang) tanpa bagian
-pemasaran.
-
-## 5. Gerak
-
-**MASTER.md menetapkan** *Stagger List* dengan GSAP (`back.out(1.4)`,
-stagger 0,06 detik) untuk daftar grid.
-
-**Keputusan:** tidak memakai GSAP (tidak tersedia di Flutter) dan tidak
-memakai animasi masuk bertahap pada daftar.
-
-**Alasan:** stagger `back.out` over-shoot pada daftar informasi padat
-dinyatakan sendiri sebagai anti-pola oleh MASTER.md ("Don't use back.out on
-dense data tables"). Daftar riwayat dan probabilitas adalah daftar
-informasi padat. Sebagai gantinya dipakai transisi Material bawaan dengan
-durasi dari `AppDurasi` (150/200/300 ms) dan seluruh gerak non-esensial
-dinonaktifkan saat `MediaQuery.disableAnimations` bernilai benar
-(padanan `prefers-reduced-motion`).
-
+- Padding horizontal halaman: `20dp` (`AppSpacing.horizontal`)
+- Spacing kecil: `8dp`, sedang: `12–16dp`, section: `24dp`
+- Radius kartu: `16dp`
+- Radius tombol: `12dp`
+- Tinggi tombol utama: `54dp` (`52–56dp`)
+- Target sentuh minimum: `48 x 48dp`

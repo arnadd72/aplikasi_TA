@@ -5,22 +5,26 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-/// Penyimpanan pengaturan sederhana berbasis berkas JSON.
+/// Penyimpanan pengaturan lokal berbasis berkas JSON (PRD F-01, F-15, F-25).
 ///
-/// Sengaja tidak memakai paket tambahan agar aplikasi tetap ringan dan
-/// seluruh proses berjalan luring (NF-01). Berkas disimpan di direktori
-/// dokumen aplikasi bersama foto hasil identifikasi.
+/// Menyimpan:
+/// - `mode_tema`: Terang / Gelap / Ikuti sistem
+/// - `onboarding_selesai`: status penyelesaian onboarding (F-01)
+/// - `bookmark_penyakit`: daftar ID penyakit yang disimpan pengguna (F-25)
 class PengaturanStore {
   PengaturanStore._();
   static final PengaturanStore instance = PengaturanStore._();
 
   static const String _namaBerkas = 'pengaturan.json';
 
-  /// Mode tema yang dipilih pengguna. Dibaca `PadiScanApp` sehingga
-  /// perubahan langsung berlaku tanpa membuka ulang aplikasi.
   final ValueNotifier<ThemeMode> modeTema = ValueNotifier<ThemeMode>(
     ThemeMode.system,
   );
+
+  final ValueNotifier<bool> onboardingSelesai = ValueNotifier<bool>(false);
+
+  final ValueNotifier<Set<String>> bookmarkPenyakit =
+      ValueNotifier<Set<String>>(<String>{});
 
   bool _sudahDimuat = false;
 
@@ -44,6 +48,14 @@ class PengaturanStore {
         'gelap' => ThemeMode.dark,
         _ => ThemeMode.system,
       };
+      onboardingSelesai.value = (mentah['onboarding_selesai'] as bool?) ?? false;
+      final markah = mentah['bookmark_penyakit'];
+      if (markah is List) {
+        bookmarkPenyakit.value = {
+          for (final item in markah)
+            if (item is String && item.isNotEmpty) item,
+        };
+      }
     } on Object catch (e) {
       debugPrint('[Pengaturan] gagal memuat: $e');
     }
@@ -51,7 +63,28 @@ class PengaturanStore {
 
   Future<void> simpanModeTema(ThemeMode mode) async {
     modeTema.value = mode;
-    await _tulis();
+    _tulisTanpaTunggu();
+  }
+
+  Future<void> simpanOnboardingSelesai(bool selesai) async {
+    onboardingSelesai.value = selesai;
+    _tulisTanpaTunggu();
+  }
+
+  Future<void> toggleBookmarkPenyakit(String idPenyakit) async {
+    final salinan = Set<String>.from(bookmarkPenyakit.value);
+    if (!salinan.remove(idPenyakit)) {
+      salinan.add(idPenyakit);
+    }
+    bookmarkPenyakit.value = salinan;
+    _tulisTanpaTunggu();
+  }
+
+  bool apakahDisimpan(String idPenyakit) =>
+      bookmarkPenyakit.value.contains(idPenyakit);
+
+  void _tulisTanpaTunggu() {
+    _tulis().ignore();
   }
 
   Future<void> _tulis() async {
@@ -62,13 +95,18 @@ class PengaturanStore {
         ThemeMode.dark => 'gelap',
         ThemeMode.system => 'sistem',
       };
-      await berkas.writeAsString(jsonEncode({'mode_tema': kode}));
+      await berkas.writeAsString(
+        jsonEncode({
+          'mode_tema': kode,
+          'onboarding_selesai': onboardingSelesai.value,
+          'bookmark_penyakit': bookmarkPenyakit.value.toList()..sort(),
+        }),
+      );
     } on Object catch (e) {
       debugPrint('[Pengaturan] gagal menyimpan: $e');
     }
   }
 
-  /// Label mode tema untuk ditampilkan di layar pengaturan.
   static String labelMode(ThemeMode mode) => switch (mode) {
     ThemeMode.light => 'Terang',
     ThemeMode.dark => 'Gelap',

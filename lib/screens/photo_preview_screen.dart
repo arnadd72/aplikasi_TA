@@ -6,6 +6,12 @@ import '../logic/photo_quality_checker.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/komponen.dart';
 
+/// Layar Pratinjau Foto sesuai PRD F-03, F-04, S-04, dan S-05.
+///
+/// Menampilkan pratinjau foto besar dengan bingkai panduan halus,
+/// instruksi pengambilan foto ("Pastikan daun terlihat jelas dan tidak buram."),
+/// pemeriksaan kualitas deterministik (gelap/buram), serta tombol
+/// "Gunakan foto" dan "Foto ulang".
 class PhotoPreviewScreen extends StatefulWidget {
   const PhotoPreviewScreen({
     super.key,
@@ -61,9 +67,9 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
       appBar: AppBar(title: const Text('Periksa foto')),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
+          AppSpacing.horizontal,
           AppSpacing.sm,
-          AppSpacing.md,
+          AppSpacing.horizontal,
           AppSpacing.md,
         ),
         child: Row(
@@ -79,7 +85,7 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
             Expanded(
               child: FilledButton.icon(
                 onPressed: kualitas == null ? null : _gunakan,
-                icon: const Icon(Icons.analytics_outlined),
+                icon: const Icon(Icons.check_circle_outline),
                 label: const Text('Gunakan foto'),
               ),
             ),
@@ -89,9 +95,9 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
+            AppSpacing.horizontal,
             AppSpacing.sm,
-            AppSpacing.md,
+            AppSpacing.horizontal,
             AppSpacing.xl,
           ),
           children: [
@@ -115,21 +121,43 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
                   label: 'Pratinjau foto daun padi',
                   image: true,
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.besar),
-                    child: AspectRatio(
-                      aspectRatio: 4 / 3,
-                      child:
-                          widget.pratinjau ??
-                          Image.file(
-                            File(widget.pathFoto),
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => const Center(
-                              child: Icon(
-                                Icons.broken_image_outlined,
-                                size: 48,
+                    borderRadius: BorderRadius.circular(AppRadius.sedang),
+                    child: Stack(
+                      children: [
+                        AspectRatio(
+                          aspectRatio: 4 / 3,
+                          child:
+                              widget.pratinjau ??
+                              Image.file(
+                                File(widget.pathFoto),
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => const Center(
+                                  child: Icon(
+                                    Icons.broken_image_outlined,
+                                    size: 48,
+                                  ),
+                                ),
+                              ),
+                        ),
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: Padding(
+                              padding: const EdgeInsets.all(AppSpacing.md),
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.kecil,
+                                  ),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.55),
+                                    width: 1.5,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -137,15 +165,14 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
             ),
             const SizedBox(height: AppSpacing.md),
             Text(
-              'Pastikan gejala terlihat jelas',
-              style: context.teks.headlineSmall,
+              'Pastikan daun terlihat jelas dan tidak buram.',
+              style: context.teks.titleLarge,
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Daun memenuhi sebagian besar bidang, fokus tajam, dan cahaya merata.',
-              style: context.teks.bodyMedium?.copyWith(
-                color: context.palet.mutedForeground,
-              ),
+              'Usahakan satu helai daun yang bergejala menjadi objek utama '
+              'dengan pencahayaan cukup.',
+              style: context.teks.bodySmall,
             ),
             const SizedBox(height: AppSpacing.md),
             if (kualitas == null && _galat == null)

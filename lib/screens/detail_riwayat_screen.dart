@@ -8,9 +8,13 @@ import '../utils/format_waktu.dart';
 import '../widgets/komponen.dart';
 import 'rekomendasi_screen.dart';
 
-/// Detail satu entri riwayat (F-07).
+/// Detail satu entri riwayat (PRD F-09 & S-09).
 ///
-/// Dapat membuka kembali rekomendasi penanganan atau menghapus entri.
+/// Mendukung:
+/// - Melihat foto, hasil, skor, tanggal, dan bukti audit model
+/// - Menambahkan/mengubah catatan pengguna dan status penanganan
+/// - Mengaitkan hasil dengan lahan (`Kelompokkan ke Petak`)
+/// - Membuka rekomendasi penanganan atau menghapus riwayat
 class DetailRiwayatScreen extends StatefulWidget {
   const DetailRiwayatScreen({super.key, required this.riwayat});
 
@@ -22,18 +26,20 @@ class DetailRiwayatScreen extends StatefulWidget {
 
 class _DetailRiwayatScreenState extends State<DetailRiwayatScreen> {
   Penyakit? _penyakit;
+  late String _catatan;
+  late String _statusPenanganan;
   bool _memuat = true;
 
   @override
   void initState() {
     super.initState();
+    _catatan = widget.riwayat.catatanPengguna;
+    _statusPenanganan = widget.riwayat.statusPenanganan;
     _muat();
   }
 
   Future<void> _muat() async {
     if (widget.riwayat.idPenyakit.isNotEmpty) {
-      // Kegagalan basis data tidak boleh mengunci layar pada indikator
-      // memuat; detail tetap tampil dengan id kelas mentah.
       try {
         _penyakit = await DatabaseHelper.instance.penyakitById(
           widget.riwayat.idPenyakit,
@@ -45,6 +51,84 @@ class _DetailRiwayatScreenState extends State<DetailRiwayatScreen> {
     }
     if (!mounted) return;
     setState(() => _memuat = false);
+  }
+
+  Future<void> _ubahCatatanDanStatus() async {
+    final id = widget.riwayat.idRiwayat;
+    if (id == null) return;
+    final ctrl = TextEditingController(text: _catatan);
+    String status = _statusPenanganan;
+
+    final simpan = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Catatan & Status Penanganan'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                initialValue: status,
+                decoration: const InputDecoration(
+                  labelText: 'Status penanganan',
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'belum_ditangani',
+                    child: Text('Belum ditangani'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'dipantau',
+                    child: Text('Sedang dipantau'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'sudah_ditangani',
+                    child: Text('Sudah ditangani'),
+                  ),
+                ],
+                onChanged: (v) {
+                  if (v != null) setDialogState(() => status = v);
+                },
+              ),
+              const SizedBox(height: AppSpacing.smPlus),
+              TextField(
+                controller: ctrl,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Catatan pengamatan / tindakan',
+                  hintText: 'Contoh: Sudah dilakukan sanitasi jerami dan pengairan berselang',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (simpan == true) {
+      await DatabaseHelper.instance.perbaruiDetailRiwayat(
+        idRiwayat: id,
+        catatanPengguna: ctrl.text,
+        statusPenanganan: status,
+      );
+      if (mounted) {
+        setState(() {
+          _catatan = ctrl.text.trim();
+          _statusPenanganan = status;
+        });
+      }
+    }
+    ctrl.dispose();
   }
 
   Future<void> _hapus() async {
@@ -133,6 +217,11 @@ class _DetailRiwayatScreenState extends State<DetailRiwayatScreen> {
         title: const Text('Detail Riwayat'),
         actions: [
           IconButton(
+            tooltip: 'Edit catatan',
+            onPressed: _ubahCatatanDanStatus,
+            icon: const Icon(Icons.edit_note_outlined),
+          ),
+          IconButton(
             tooltip: 'Hapus riwayat ini',
             onPressed: _hapus,
             icon: const Icon(Icons.delete_outline),
@@ -143,9 +232,9 @@ class _DetailRiwayatScreenState extends State<DetailRiwayatScreen> {
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.fromLTRB(
+                AppSpacing.horizontal,
                 AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.md,
+                AppSpacing.horizontal,
                 AppSpacing.xl,
               ),
               children: [
@@ -156,7 +245,7 @@ class _DetailRiwayatScreenState extends State<DetailRiwayatScreen> {
                 const SizedBox(height: AppSpacing.md),
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md + 2),
+                    padding: const EdgeInsets.all(AppSpacing.horizontal),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -168,7 +257,7 @@ class _DetailRiwayatScreenState extends State<DetailRiwayatScreen> {
                                 dikenali
                                     ? (_penyakit?.nama ??
                                           Penyakit.namaDariId(r.idPenyakit))
-                                    : 'Tidak Dikenali',
+                                    : 'Hasil Belum Meyakinkan',
                                 style: context.teks.headlineSmall?.copyWith(
                                   color: warna,
                                 ),
@@ -177,7 +266,7 @@ class _DetailRiwayatScreenState extends State<DetailRiwayatScreen> {
                             Lencana(
                               teks: dikenali
                                   ? (yakin >= 70 ? 'Dikenali' : 'Ragu')
-                                  : 'Tanpa hasil',
+                                  : 'Di bawah 70%',
                               warna: warna,
                               ikon: dikenali
                                   ? Icons.check_circle_outline
@@ -208,11 +297,28 @@ class _DetailRiwayatScreenState extends State<DetailRiwayatScreen> {
                           label: 'Jam',
                           nilai: FormatWaktu.ringkas(r.waktu).split(', ').last,
                         ),
+                        if (r.namaPetak != null && r.namaPetak!.isNotEmpty)
+                          BarisLabelNilai(
+                            label: 'Lahan',
+                            nilai: r.namaPetak!,
+                          ),
+                        BarisLabelNilai(
+                          label: 'Status penanganan',
+                          nilai: Riwayat.labelStatusPenanganan(
+                            _statusPenanganan,
+                          ),
+                        ),
+                        if (_catatan.isNotEmpty)
+                          BarisLabelNilai(
+                            label: 'Catatan pengguna',
+                            nilai: _catatan,
+                          ),
                         if (!dikenali) ...[
                           const SizedBox(height: AppSpacing.sm),
                           Text(
-                            'Hasil ini berada di bawah ambang batas 70%, '
-                            'sehingga aplikasi tidak menampilkan diagnosis.',
+                            'Hasil belum cukup meyakinkan (di bawah ambang '
+                            'batas 70%), sehingga aplikasi tidak menampilkan '
+                            'diagnosis.',
                             style: context.teks.bodySmall,
                           ),
                         ],
@@ -270,6 +376,12 @@ class _DetailRiwayatScreenState extends State<DetailRiwayatScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
+                OutlinedButton.icon(
+                  onPressed: _ubahCatatanDanStatus,
+                  icon: const Icon(Icons.edit_note_outlined),
+                  label: const Text('Ubah Catatan & Status Penanganan'),
+                ),
+                const SizedBox(height: AppSpacing.sm),
                 OutlinedButton.icon(
                   onPressed: _kelompokkan,
                   icon: const Icon(Icons.drive_file_move_outline),

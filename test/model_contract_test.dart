@@ -17,7 +17,7 @@ void main() {
       'Hawar Daun Bakteri (HDB)',
     );
     expect(Penyakit.namaDariId('normal'), 'Daun Sehat');
-    expect(Penyakit.namaDariId(''), 'Tanpa hasil');
+    expect(Penyakit.namaDariId(''), 'Belum Meyakinkan');
   });
 
   test('ImagePreprocessor mempertahankan nilai piksel citra 224x224', () {

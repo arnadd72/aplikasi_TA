@@ -40,6 +40,7 @@ flutter:
   assets:
     - assets/models/
     - assets/data/
+    - assets/images/
 
   # Tipografi "Friendly SaaS" (Plus Jakarta Sans) dari
   # design-system/padi-scan/MASTER.md. Font disimpan lokal dan tidak

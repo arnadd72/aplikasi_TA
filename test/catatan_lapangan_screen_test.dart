@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:padi_scan/data/catatan_lapangan_repository.dart';
 import 'package:padi_scan/models/catatan_lapangan.dart';
 import 'package:padi_scan/models/hasil_identifikasi.dart';
+import 'package:padi_scan/screens/onboarding_screen.dart';
 import 'package:padi_scan/screens/petak_screen.dart';
 import 'package:padi_scan/screens/sesi_survei_screen.dart';
 import 'package:padi_scan/theme/app_theme.dart';
@@ -15,6 +16,8 @@ class _RepoPalsu implements CatatanLapanganRepository {
   Future<List<Petak>> semuaPetak() async => petak;
   @override
   Future<int> simpanPetak(Petak nilai) async => nilai.idPetak ?? 1;
+  @override
+  Future<void> hapusPetak(int idPetak) async {}
   @override
   Future<List<MusimTanam>> musimUntukPetak(int idPetak) async => const [];
   @override
@@ -31,9 +34,80 @@ class _RepoPalsu implements CatatanLapanganRepository {
   Future<List<Riwayat>> timelinePetak(int idPetak) async => const [];
   @override
   Future<List<Riwayat>> riwayatSesi(int idSesi) async => const [];
+  @override
+  Future<List<CatatanPengamatan>> pengamatanUntukPetak(int idPetak) async =>
+      const [];
+  @override
+  Future<int> simpanPengamatan(CatatanPengamatan nilai) async =>
+      nilai.idPengamatan ?? 1;
+  @override
+  Future<void> hapusPengamatan(int idPengamatan) async {}
+  @override
+  Future<List<JadwalPerawatan>> jadwalUntukPetak(int idPetak) async => const [];
+  @override
+  Future<int> simpanJadwal(JadwalPerawatan nilai) async => nilai.idJadwal ?? 1;
+  @override
+  Future<void> ubahStatusJadwal(int idJadwal, bool selesai) async {}
+  @override
+  Future<void> hapusJadwal(int idJadwal) async {}
 }
 
 void main() {
+  test('Petak menghitung umur tanaman HST secara deterministik (PRD F-12)', () {
+    final tanpaTanggal = Petak(
+      nama: 'Lahan A',
+      dibuatPada: DateTime(2026, 11, 1),
+    );
+    expect(tanpaTanggal.umurHariSetelahTanam(), isNull);
+
+    final denganTanggal = Petak(
+      nama: 'Lahan B',
+      luasHektare: 0.75,
+      satuanLuas: 'ha',
+      varietas: 'Inpari 32',
+      tanggalTanam: DateTime(2026, 10, 1),
+      dibuatPada: DateTime(2026, 10, 1),
+    );
+    expect(
+      denganTanggal.umurHariSetelahTanam(sekarang: DateTime(2026, 11, 10)),
+      40,
+    );
+    expect(
+      denganTanggal.faseTanam(sekarang: DateTime(2026, 11, 10)),
+      'Fase Vegetatif (Anakan)',
+    );
+    expect(denganTanggal.labelLuas, '0,75 ha');
+  });
+
+  testWidgets('Onboarding menampilkan tiga halaman PRD F-01', (tester) async {
+    var selesai = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.terang,
+        home: OnboardingScreen(onSelesai: () => selesai = true),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Kenali penyakit daun padi'), findsOneWidget);
+    expect(
+      find.text('Ambil foto daun padi untuk mengetahui kemungkinan penyakitnya.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Lanjut'));
+    await tester.pumpAndSettle();
+    expect(find.text('Dapatkan panduan penanganan'), findsOneWidget);
+
+    await tester.tap(find.text('Lanjut'));
+    await tester.pumpAndSettle();
+    expect(find.text('Gunakan tanpa internet'), findsOneWidget);
+
+    await tester.tap(find.text('Mulai'));
+    await tester.pumpAndSettle();
+    expect(selesai, isTrue);
+  });
+
   testWidgets('petak kosong memberi pintu tambah yang jelas', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -58,6 +132,10 @@ void main() {
                 idPetak: 3,
                 nama: 'Petak Utara',
                 lokasiCatatan: 'Dekat saluran air',
+                varietas: 'Inpari 32',
+                luasHektare: 0.5,
+                satuanLuas: 'ha',
+                tanggalTanam: DateTime(2026, 10, 15),
                 dibuatPada: DateTime(2026, 11, 17),
               ),
             ],
@@ -68,6 +146,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Petak Utara'), findsOneWidget);
+    expect(find.text('Varietas: Inpari 32'), findsOneWidget);
     expect(find.text('Mulai survei'), findsOneWidget);
     expect(find.text('Timeline'), findsOneWidget);
   });

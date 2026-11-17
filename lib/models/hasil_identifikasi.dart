@@ -51,6 +51,8 @@ class HasilIdentifikasi {
 
   final String pathFoto;
   final DateTime waktu;
+  final int? idRiwayat;
+  final int? idPetak;
 
   const HasilIdentifikasi({
     required this.idPenyakit,
@@ -64,6 +66,8 @@ class HasilIdentifikasi {
     this.peringatanKualitas = const [],
     required this.pathFoto,
     required this.waktu,
+    this.idRiwayat,
+    this.idPetak,
   }) : waktuTotalMs = waktuTotalMs ?? waktuInferensiMs;
 
   /// Keyakinan dalam persen untuk ditampilkan (F-04).
@@ -79,7 +83,7 @@ class ProbabilitasKelas {
   double get persen => nilai * 100;
 }
 
-/// Satu baris tabel `riwayat` (Tabel 3.6).
+/// Satu baris tabel `riwayat` / `diagnoses` (PRD F-09 & Tabel 13.3).
 class Riwayat {
   final int? idRiwayat;
   final String pathFoto;
@@ -88,6 +92,7 @@ class Riwayat {
   final DateTime waktu;
   final Penyakit? penyakit;
   final int? idPetak;
+  final String? namaPetak;
   final int? idMusim;
   final int? idSesi;
   final StatusIdentifikasi status;
@@ -100,6 +105,8 @@ class Riwayat {
   final String modelVersion;
   final String probabilitasJson;
   final bool auditTersedia;
+  final String catatanPengguna;
+  final String statusPenanganan;
 
   const Riwayat({
     this.idRiwayat,
@@ -109,6 +116,7 @@ class Riwayat {
     required this.waktu,
     this.penyakit,
     this.idPetak,
+    this.namaPetak,
     this.idMusim,
     this.idSesi,
     this.status = StatusIdentifikasi.terklasifikasi,
@@ -121,9 +129,21 @@ class Riwayat {
     this.modelVersion = 'tidak-tercatat',
     this.probabilitasJson = '{}',
     this.auditTersedia = true,
+    this.catatanPengguna = '',
+    this.statusPenanganan = 'belum_ditangani',
   });
 
-  factory Riwayat.fromDb(Map<String, dynamic> row, {Penyakit? penyakit}) {
+  static String labelStatusPenanganan(String kode) => switch (kode) {
+    'dipantau' => 'Sedang dipantau',
+    'sudah_ditangani' => 'Sudah ditangani',
+    _ => 'Belum ditangani',
+  };
+
+  factory Riwayat.fromDb(
+    Map<String, dynamic> row, {
+    Penyakit? penyakit,
+    String? namaPetak,
+  }) {
     final idPenyakit = (row['id_penyakit'] as String?) ?? '';
     return Riwayat(
       idRiwayat: row['id_riwayat'] as int?,
@@ -133,6 +153,7 @@ class Riwayat {
       waktu: DateTime.tryParse(row['waktu'] as String) ?? DateTime.now(),
       penyakit: penyakit,
       idPetak: row['id_petak'] as int?,
+      namaPetak: namaPetak ?? (row['nama_petak'] as String?),
       idMusim: row['id_musim'] as int?,
       idSesi: row['id_sesi'] as int?,
       status: StatusIdentifikasi.dariKode(row['status'] as String?, idPenyakit),
@@ -145,6 +166,11 @@ class Riwayat {
       modelVersion: row['model_version'] as String? ?? 'tidak-tercatat',
       probabilitasJson: row['probabilitas_json'] as String? ?? '{}',
       auditTersedia: (row['audit_tersedia'] as int? ?? 0) == 1,
+      catatanPengguna: (row['catatan_pengguna'] as String?) ?? '',
+      statusPenanganan:
+          (row['status_penanganan'] as String?)?.isNotEmpty == true
+          ? row['status_penanganan'] as String
+          : 'belum_ditangani',
     );
   }
 
@@ -167,5 +193,9 @@ class Riwayat {
     'model_version': modelVersion,
     'probabilitas_json': probabilitasJson,
     'audit_tersedia': auditTersedia ? 1 : 0,
+    'catatan_pengguna': catatanPengguna.trim(),
+    'status_penanganan': statusPenanganan.trim().isEmpty
+        ? 'belum_ditangani'
+        : statusPenanganan.trim(),
   };
 }

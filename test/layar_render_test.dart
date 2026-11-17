@@ -5,6 +5,7 @@ import 'package:padi_scan/models/penyakit.dart';
 import 'package:padi_scan/screens/detail_riwayat_screen.dart';
 import 'package:padi_scan/screens/hasil_screen.dart';
 import 'package:padi_scan/screens/informasi_screen.dart';
+import 'package:padi_scan/screens/onboarding_screen.dart';
 import 'package:padi_scan/screens/panduan_foto_screen.dart';
 import 'package:padi_scan/screens/pengaturan_screen.dart';
 import 'package:padi_scan/screens/rekomendasi_screen.dart';
@@ -12,10 +13,7 @@ import 'package:padi_scan/screens/riwayat_screen.dart';
 import 'package:padi_scan/screens/statistik_screen.dart';
 import 'package:padi_scan/theme/app_theme.dart';
 
-/// Layar di luar beranda juga harus lolos tata letak. Galat basis data
-/// (`MissingPluginException` di lingkungan uji) memang diharapkan dan
-/// ditangani oleh `KeadaanKosong`; yang diuji di sini adalah tidak adanya
-/// galat render seperti `BoxConstraints forces an infinite height`.
+/// Pengujian render seluruh layar pada mode terang dan gelap.
 void main() {
   const penyakitUji = Penyakit(
     idPenyakit: 'blas',
@@ -73,16 +71,11 @@ void main() {
     tester.view.devicePixelRatio = 2.75;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(MaterialApp(theme: tema, home: layar));
-    // `pumpAndSettle` tidak dapat dipakai: layar ber-`FutureBuilder` sempat
-    // menampilkan `CircularProgressIndicator` yang beranimasi tanpa henti
-    // ketika basis data belum siap di lingkungan uji.
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
   }
 
-  /// Menggulir sampai teks tujuan terlihat. `ListView` membangun anak secara
-  /// malas sehingga bagian bawah layar belum ada di pohon widget.
   Future<void> gulirKe(WidgetTester tester, String teks) async {
     await tester.scrollUntilVisible(
       find.text(teks),
@@ -97,6 +90,14 @@ void main() {
     ('terang', AppTheme.terang),
     ('gelap', AppTheme.gelap),
   ]) {
+    testWidgets('Onboarding ($nama) menggambar tanpa galat tata letak', (
+      WidgetTester tester,
+    ) async {
+      await pump(tester, const OnboardingScreen(), tema);
+      expect(tester.takeException(), isNull);
+      expect(find.text('Kenali penyakit daun padi'), findsOneWidget);
+    });
+
     testWidgets('Rekomendasi ($nama) menggambar tanpa galat tata letak', (
       WidgetTester tester,
     ) async {
@@ -136,6 +137,12 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.text('Hasil Identifikasi'), findsOneWidget);
+      expect(
+        find.text(
+          'Hasil belum cukup meyakinkan. Coba ambil foto daun yang lebih jelas.',
+        ),
+        findsOneWidget,
+      );
 
       await gulirKe(tester, 'Identifikasi Foto Lain');
       expect(tester.takeException(), isNull);

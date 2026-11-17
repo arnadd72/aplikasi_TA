@@ -2,10 +2,16 @@ import 'package:flutter/material.dart';
 
 import 'home_screen.dart';
 import 'informasi_screen.dart';
-import 'pengaturan_screen.dart';
+import 'petak_screen.dart';
 import 'riwayat_screen.dart';
 
-/// Kerangka navigasi utama. IndexedStack mempertahankan posisi/keadaan tab.
+/// Kerangka navigasi utama empat menu sesuai PRD Bagian 5.1:
+/// 1. Beranda    — Ringkasan kondisi, pintasan identifikasi, aktivitas
+/// 2. Lahan Saya — Pengelolaan lahan, catatan dan monitoring
+/// 3. Riwayat    — Hasil identifikasi sebelumnya
+/// 4. Panduan    — Informasi penyakit dan edukasi
+///
+/// Pengaturan diakses melalui ikon pada bagian atas Beranda (PRD Bagian 5.1).
 class AppShell extends StatefulWidget {
   const AppShell({super.key, this.halaman, this.indeksAwal = 0});
 
@@ -21,24 +27,24 @@ class _AppShellState extends State<AppShell> {
 
   static const _tujuan = <NavigationDestination>[
     NavigationDestination(
-      icon: Icon(Icons.document_scanner_outlined),
-      selectedIcon: Icon(Icons.document_scanner),
-      label: 'Periksa',
+      icon: Icon(Icons.home_outlined),
+      selectedIcon: Icon(Icons.home_rounded),
+      label: 'Beranda',
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.grass_outlined),
+      selectedIcon: Icon(Icons.grass_rounded),
+      label: 'Lahan Saya',
     ),
     NavigationDestination(
       icon: Icon(Icons.history_outlined),
-      selectedIcon: Icon(Icons.history),
+      selectedIcon: Icon(Icons.history_rounded),
       label: 'Riwayat',
     ),
     NavigationDestination(
       icon: Icon(Icons.menu_book_outlined),
-      selectedIcon: Icon(Icons.menu_book),
-      label: 'Edukasi',
-    ),
-    NavigationDestination(
-      icon: Icon(Icons.tune_outlined),
-      selectedIcon: Icon(Icons.tune),
-      label: 'Pengaturan',
+      selectedIcon: Icon(Icons.menu_book_rounded),
+      label: 'Panduan',
     ),
   ];
 
@@ -48,15 +54,20 @@ class _AppShellState extends State<AppShell> {
     _indeks = widget.indeksAwal.clamp(0, 3);
   }
 
+  void _pindahTab(int indeksBaru) {
+    if (!mounted) return;
+    setState(() => _indeks = indeksBaru.clamp(0, 3));
+  }
+
   @override
   Widget build(BuildContext context) {
     final halaman =
         widget.halaman ??
-        const [
-          HomeScreen(),
-          RiwayatScreen(),
-          InformasiScreen(),
-          PengaturanScreen(),
+        [
+          HomeScreen(onPindahTab: _pindahTab),
+          const PetakScreen(),
+          RiwayatScreen(onMulaiIdentifikasi: () => _pindahTab(0)),
+          const InformasiScreen(),
         ];
     assert(halaman.length == 4);
 
@@ -71,8 +82,7 @@ class _AppShellState extends State<AppShell> {
                 SafeArea(
                   child: NavigationRail(
                     selectedIndex: _indeks,
-                    onDestinationSelected: (nilai) =>
-                        setState(() => _indeks = nilai),
+                    onDestinationSelected: _pindahTab,
                     labelType: NavigationRailLabelType.all,
                     destinations: [
                       for (final tujuan in _tujuan)
@@ -94,7 +104,7 @@ class _AppShellState extends State<AppShell> {
           body: isi,
           bottomNavigationBar: NavigationBar(
             selectedIndex: _indeks,
-            onDestinationSelected: (nilai) => setState(() => _indeks = nilai),
+            onDestinationSelected: _pindahTab,
             destinations: _tujuan,
           ),
         );

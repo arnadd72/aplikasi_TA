@@ -3,11 +3,26 @@ import 'package:flutter/material.dart';
 import '../data/catatan_lapangan_repository.dart';
 import '../models/catatan_lapangan.dart';
 import '../theme/app_tokens.dart';
+import '../utils/format_waktu.dart';
 
+/// Formulir Tambah atau Edit Lahan sesuai PRD F-11 dan S-11.
+///
+/// Field:
+/// - Nama lahan (wajib)
+/// - Lokasi teks (opsional)
+/// - Luas (opsional, harus positif jika diisi) + Satuan luas (`ha`, `m²`, `bahu`, `patok`)
+/// - Varietas padi (opsional)
+/// - Tanggal tanam (opsional)
+/// - Catatan (opsional)
 class FormPetakScreen extends StatefulWidget {
-  const FormPetakScreen({super.key, required this.repository});
+  const FormPetakScreen({
+    super.key,
+    required this.repository,
+    this.petakAwal,
+  });
 
   final CatatanLapanganRepository repository;
+  final Petak? petakAwal;
 
   @override
   State<FormPetakScreen> createState() => _FormPetakScreenState();
@@ -15,12 +30,35 @@ class FormPetakScreen extends StatefulWidget {
 
 class _FormPetakScreenState extends State<FormPetakScreen> {
   final _form = GlobalKey<FormState>();
-  final _nama = TextEditingController();
-  final _lokasi = TextEditingController();
-  final _luas = TextEditingController();
-  final _varietas = TextEditingController();
+  late final TextEditingController _nama;
+  late final TextEditingController _lokasi;
+  late final TextEditingController _luas;
+  late final TextEditingController _varietas;
+  late final TextEditingController _catatan;
+  String _satuanLuas = 'ha';
   DateTime? _tanggalTanam;
   bool _sibuk = false;
+
+  static const List<String> _daftarSatuan = ['ha', 'm²', 'bahu', 'patok'];
+
+  @override
+  void initState() {
+    super.initState();
+    final awal = widget.petakAwal;
+    _nama = TextEditingController(text: awal?.nama ?? '');
+    _lokasi = TextEditingController(text: awal?.lokasiCatatan ?? '');
+    _luas = TextEditingController(
+      text: awal?.luasHektare != null
+          ? awal!.luasHektare!.toString().replaceAll('.', ',')
+          : '',
+    );
+    _varietas = TextEditingController(text: awal?.varietas ?? '');
+    _catatan = TextEditingController(text: awal?.catatan ?? '');
+    _satuanLuas = awal != null && _daftarSatuan.contains(awal.satuanLuas)
+        ? awal.satuanLuas
+        : 'ha';
+    _tanggalTanam = awal?.tanggalTanam;
+  }
 
   @override
   void dispose() {
@@ -28,6 +66,7 @@ class _FormPetakScreenState extends State<FormPetakScreen> {
     _lokasi.dispose();
     _luas.dispose();
     _varietas.dispose();
+    _catatan.dispose();
     super.dispose();
   }
 
@@ -37,43 +76,116 @@ class _FormPetakScreenState extends State<FormPetakScreen> {
     final luas = double.tryParse(_luas.text.trim().replaceAll(',', '.'));
     await widget.repository.simpanPetak(
       Petak(
+        idPetak: widget.petakAwal?.idPetak,
         nama: _nama.text.trim(),
         lokasiCatatan: _lokasi.text.trim(),
         luasHektare: luas,
+        satuanLuas: _satuanLuas,
         varietas: _varietas.text.trim(),
         tanggalTanam: _tanggalTanam,
-        dibuatPada: DateTime.now(),
+        catatan: _catatan.text.trim(),
+        dibuatPada: widget.petakAwal?.dibuatPada ?? DateTime.now(),
       ),
     );
-    if (mounted) Navigator.of(context).pop(true);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          widget.petakAwal == null
+              ? 'Lahan berhasil disimpan.'
+              : 'Data lahan berhasil diperbarui.',
+        ),
+      ),
+    );
+    Navigator.of(context).pop(true);
   }
 
   @override
   Widget build(BuildContext context) {
+    final modeEdit = widget.petakAwal != null;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Tambah petak')),
+      appBar: AppBar(
+        title: Text(modeEdit ? 'Edit Lahan' : 'Tambah Lahan / Petak'),
+      ),
       body: Form(
         key: _form,
         child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.horizontal,
+            AppSpacing.md,
+            AppSpacing.horizontal,
+            AppSpacing.xl,
+          ),
           children: [
             TextFormField(
               controller: _nama,
               decoration: const InputDecoration(
-                labelText: 'Nama petak',
+                labelText: 'Nama lahan / petak (wajib)',
                 hintText: 'Contoh: Petak Utara',
               ),
               textInputAction: TextInputAction.next,
               validator: (nilai) => nilai == null || nilai.trim().isEmpty
-                  ? 'Nama petak wajib diisi.'
+                  ? 'Nama lahan wajib diisi.'
                   : null,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextFormField(
+              controller: _lokasi,
+              decoration: const InputDecoration(
+                labelText: 'Lokasi (opsional)',
+                hintText: 'Contoh: Blok B dekat saluran irigasi',
+              ),
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: TextFormField(
+                    controller: _luas,
+                    decoration: const InputDecoration(
+                      labelText: 'Luas lahan (opsional)',
+                      hintText: 'Contoh: 0,5',
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    validator: (nilai) {
+                      if (nilai == null || nilai.trim().isEmpty) return null;
+                      final angka = double.tryParse(
+                        nilai.trim().replaceAll(',', '.'),
+                      );
+                      return angka == null || angka <= 0
+                          ? 'Masukkan luas lebih dari 0.'
+                          : null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _satuanLuas,
+                    decoration: const InputDecoration(labelText: 'Satuan'),
+                    items: [
+                      for (final s in _daftarSatuan)
+                        DropdownMenuItem(value: s, child: Text(s)),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) setState(() => _satuanLuas = v);
+                    },
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.md),
             TextFormField(
               controller: _varietas,
               decoration: const InputDecoration(
-                labelText: 'Varietas (opsional)',
-                hintText: 'Contoh: Inpari 32',
+                labelText: 'Varietas padi (opsional)',
+                hintText: 'Contoh: Inpari 32, Ciherang, IR64',
               ),
               textInputAction: TextInputAction.next,
             ),
@@ -96,42 +208,41 @@ class _FormPetakScreenState extends State<FormPetakScreen> {
                 child: Text(
                   _tanggalTanam == null
                       ? 'Tanggal tanam (opsional)'
-                      : '${_tanggalTanam!.day}/${_tanggalTanam!.month}/${_tanggalTanam!.year}',
+                      : 'Tanggal tanam: ${FormatWaktu.panjang(_tanggalTanam!)}',
                 ),
               ),
             ),
+            if (_tanggalTanam != null) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => setState(() => _tanggalTanam = null),
+                  icon: const Icon(Icons.clear, size: 16),
+                  label: const Text('Kosongkan tanggal tanam'),
+                ),
+              ),
+            ],
             const SizedBox(height: AppSpacing.md),
             TextFormField(
-              controller: _lokasi,
+              controller: _catatan,
+              maxLines: 3,
               decoration: const InputDecoration(
-                labelText: 'Catatan lokasi',
-                hintText: 'Contoh: dekat saluran air',
+                labelText: 'Catatan lahan (opsional)',
+                hintText: 'Contoh: Riwayat serangan HDB musim lalu, drainase sedang',
               ),
-              textInputAction: TextInputAction.next,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              controller: _luas,
-              decoration: const InputDecoration(
-                labelText: 'Luas (hektare, opsional)',
-                hintText: 'Contoh: 0,75',
-              ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              validator: (nilai) {
-                if (nilai == null || nilai.trim().isEmpty) return null;
-                final angka = double.tryParse(nilai.replaceAll(',', '.'));
-                return angka == null || angka <= 0
-                    ? 'Masukkan luas lebih dari 0.'
-                    : null;
-              },
             ),
             const SizedBox(height: AppSpacing.lg),
             FilledButton.icon(
               onPressed: _sibuk ? null : _simpan,
               icon: const Icon(Icons.save_outlined),
-              label: Text(_sibuk ? 'Menyimpan…' : 'Simpan petak'),
+              label: Text(
+                _sibuk
+                    ? 'Menyimpan…'
+                    : modeEdit
+                    ? 'Simpan Perubahan'
+                    : 'Simpan petak',
+              ),
             ),
           ],
         ),
