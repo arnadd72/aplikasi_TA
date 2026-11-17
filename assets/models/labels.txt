@@ -1,0 +1,13 @@
+# Urutan label HARUS sama dengan urutan kelas keluaran model TFLite.
+# Model Mustofa dkk. (2026) dilatih dengan kelas terurut alfabetis
+# berdasarkan nama folder dataset "Data Rice Leaf FN":
+#   0 Brown Spot        -> bercak_cokelat
+#   1 Leaf Blast        -> blas
+#   2 Leaf Blight       -> hawar_daun_bakteri
+#   3 Normal            -> normal
+# Jika berkas model yang Anda peroleh memiliki urutan berbeda,
+# ubah urutan baris di bawah agar sesuai.
+bercak_cokelat
+blas
+hawar_daun_bakteri
+normal

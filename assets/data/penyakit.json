@@ -1,0 +1,149 @@
+{
+  "kelas": [
+    {
+      "id_penyakit": "bercak_cokelat",
+      "label_model": "Brown Spot",
+      "nama": "Bercak Cokelat",
+      "nama_latin": "Bipolaris oryzae",
+      "penyebab": "Jamur Bipolaris oryzae",
+      "gejala": "Bercak berukuran hingga 10 mm pada daun dewasa dengan bagian tengah berwarna abu-abu dan tepi berwarna gelap. Jamur dapat menyerang bibit, daun, pelepah, dan malai.",
+      "rekomendasi": [
+        {
+          "kategori": "kultur_teknis",
+          "isi": "Lakukan perlakuan benih dengan air panas bersuhu 53-54 derajat Celsius selama 10-12 menit.",
+          "sumber": "Jackson (2025), Rice brown leaf spot (427), Pacific Pests, Pathogens, Weeds & Pesticides"
+        },
+        {
+          "kategori": "kultur_teknis",
+          "isi": "Berikan pupuk sesuai rekomendasi pemupukan setempat dan gunakan varietas tahan.",
+          "sumber": "Jackson (2025), Rice brown leaf spot (427)"
+        },
+        {
+          "kategori": "kultur_teknis",
+          "isi": "Benamkan atau musnahkan jerami dan singgang setelah panen karena sisa tanaman dapat menjadi sumber penularan.",
+          "sumber": "Jackson (2025), Rice brown leaf spot (427)"
+        },
+        {
+          "kategori": "kimia",
+          "isi": "Perlakuan benih dengan fungisida berbahan aktif iprodion, karbendazim, atau golongan strobilurin dan azol, dilanjutkan aplikasi pada fase anakan dan bunting.",
+          "sumber": "Jackson (2025), Rice brown leaf spot (427)"
+        },
+        {
+          "kategori": "kimia",
+          "isi": "Ikuti petunjuk penggunaan pada label kemasan pestisida dan gunakan hanya produk yang terdaftar.",
+          "sumber": "Undang-Undang Nomor 22 Tahun 2019"
+        }
+      ]
+    },
+    {
+      "id_penyakit": "blas",
+      "label_model": "Leaf Blast",
+      "nama": "Blas (Blas Daun)",
+      "nama_latin": "Pyricularia oryzae",
+      "penyebab": "Jamur Pyricularia oryzae",
+      "gejala": "Pada fase bibit dan vegetatif muncul bercak cokelat berbentuk belah ketupat. Pada fase generatif muncul blas leher pada tangkai malai yang menyebabkan malai busuk atau patah sehingga banyak gabah hampa.",
+      "rekomendasi": [
+        {
+          "kategori": "kultur_teknis",
+          "isi": "Gunakan varietas tahan sesuai ras patogen setempat dan lakukan pergiliran varietas.",
+          "sumber": "BPTP Gorontalo (2016), Penyakit Blas pada Tanaman Padi & Cara Pengendaliannya"
+        },
+        {
+          "kategori": "kultur_teknis",
+          "isi": "Hindari pupuk nitrogen berlebihan serta berikan nitrogen dan kalium secara berimbang.",
+          "sumber": "BPTP Gorontalo (2016)"
+        },
+        {
+          "kategori": "kultur_teknis",
+          "isi": "Gunakan jarak tanam yang tidak terlalu rapat atau sistem legowo, dan terapkan pengairan berselang.",
+          "sumber": "BPTP Gorontalo (2016)"
+        },
+        {
+          "kategori": "kultur_teknis",
+          "isi": "Bersihkan gulma inang dan sisa tanaman terinfeksi, serta komposkan jerami sebelum dikembalikan ke lahan.",
+          "sumber": "BPTP Gorontalo (2016)"
+        },
+        {
+          "kategori": "kimia",
+          "isi": "Perlakuan benih dengan fungisida sistemik berbahan aktif trisiklazol.",
+          "sumber": "BPTP Gorontalo (2016)"
+        },
+        {
+          "kategori": "kimia",
+          "isi": "Penyemprotan fungisida berbahan aktif trisiklazol, isoprotiolan, mankozeb, karbendazim, atau benomil pada saat anakan maksimum dan awal berbunga.",
+          "sumber": "BPTP Gorontalo (2016)"
+        },
+        {
+          "kategori": "hayati",
+          "isi": "Pemanfaatan agens hayati Pseudomonas fluorescens, Ralstonia pickettii, dan Chromobacterium sp. berpotensi menekan Pyricularia oryzae berdasarkan uji laboratorium.",
+          "sumber": "Dewi dkk. (2020), Jurnal Fitopatologi Indonesia"
+        }
+      ]
+    },
+    {
+      "id_penyakit": "hawar_daun_bakteri",
+      "label_model": "Leaf Blight",
+      "nama": "Hawar Daun Bakteri (HDB)",
+      "nama_latin": "Xanthomonas oryzae pv. oryzae",
+      "penyebab": "Bakteri Xanthomonas oryzae pv. oryzae",
+      "gejala": "Garis kebasahan berwarna kekuningan yang umumnya dimulai dari ujung daun, memanjang dan melebar dengan tepi bergelombang hingga berwarna putih keabu-abuan. Pada tanaman muda muncul gejala kresek, yaitu daun layu dan menggulung.",
+      "rekomendasi": [
+        {
+          "kategori": "kultur_teknis",
+          "isi": "Gunakan varietas tahan karena merupakan cara pengendalian yang paling efektif.",
+          "sumber": "PhilRice, Bacterial leaf blight fact sheet"
+        },
+        {
+          "kategori": "kultur_teknis",
+          "isi": "Berikan pupuk, terutama nitrogen, secara hati-hati dan atur jarak tanam.",
+          "sumber": "PhilRice, Bacterial leaf blight fact sheet"
+        },
+        {
+          "kategori": "kultur_teknis",
+          "isi": "Bersihkan gulma inang, jerami, singgang, dan tanaman padi liar, lalu benamkan sisa jerami setelah panen.",
+          "sumber": "PhilRice, Bacterial leaf blight fact sheet"
+        },
+        {
+          "kategori": "kultur_teknis",
+          "isi": "Genangi persemaian secara dangkal, lakukan drainase saat terjadi genangan berlebih, kemudian berakan dan keringkan lahan.",
+          "sumber": "PhilRice, Bacterial leaf blight fact sheet"
+        },
+        {
+          "kategori": "kimia",
+          "isi": "Senyawa tembaga dan antibiotik dilaporkan kurang efektif sehingga pengendalian diutamakan melalui kultur teknis.",
+          "sumber": "PhilRice, Bacterial leaf blight fact sheet"
+        },
+        {
+          "kategori": "kimia",
+          "isi": "Pertimbangkan perlakuan benih menggunakan bahan aktif kalsium hipoklorit atau seng sulfat setelah berkonsultasi dengan PPL/POPT.",
+          "sumber": "PhilRice, Bacterial leaf blight fact sheet"
+        },
+        {
+          "kategori": "kultur_teknis",
+          "isi": "Laporkan kepada PPL/POPT apabila serangan meluas.",
+          "sumber": "Undang-Undang Nomor 22 Tahun 2019"
+        }
+      ]
+    },
+    {
+      "id_penyakit": "normal",
+      "label_model": "Normal",
+      "nama": "Daun Sehat",
+      "nama_latin": "Oryza sativa L.",
+      "penyebab": "Tidak terdeteksi gejala penyakit",
+      "gejala": "Daun berwarna hijau merata tanpa bercak, garis kebasahan, atau perubahan warna yang menandakan penyakit.",
+      "rekomendasi": [
+        {
+          "kategori": "kultur_teknis",
+          "isi": "Tidak terdeteksi gejala penyakit. Lakukan pemantauan berkala pada daun, batang, dan malai.",
+          "sumber": "Rekomendasi penelitian"
+        },
+        {
+          "kategori": "kultur_teknis",
+          "isi": "Pertahankan pemupukan berimbang, pengairan berselang, dan sanitasi lahan agar tanaman tetap sehat.",
+          "sumber": "BPTP Gorontalo (2016); PhilRice"
+        }
+      ]
+    }
+  ]
+}

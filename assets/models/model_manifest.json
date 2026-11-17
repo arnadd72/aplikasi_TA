@@ -1,0 +1,36 @@
+{
+  "id": "mobilenetv2-local-replikasi-v1",
+  "arsitektur": "MobileNetV2",
+  "format": "TensorFlow Lite",
+  "asal_artefak": "reimplementasi_lokal",
+  "setara_artefak_penulis": false,
+  "input": {
+    "shape": [1, 224, 224, 3],
+    "dtype": "float32",
+    "normalisasi": "rescale_1_per_255"
+  },
+  "kelas": [
+    "bercak_cokelat",
+    "blas",
+    "hawar_daun_bakteri",
+    "normal"
+  ],
+  "jumlah_dataset": 6180,
+  "split_jurnal": {
+    "latih": 4324,
+    "validasi": 928,
+    "uji": 928
+  },
+  "split_reimplementasi_lokal": {
+    "latih": 4326,
+    "validasi": 927,
+    "uji": 927,
+    "catatan": "[ASUMSI] Pembulatan split lokal berbeda dari angka jurnal dan wajib dilaporkan di BAB III."
+  },
+  "akurasi_jurnal_persen": 97.20,
+  "akurasi_tflite_lokal_persen": 98.166,
+  "sha256_model": "55c2517cdd10295a7407ded8ebb8eb2e2ac2fd3c4928f703da39d26aab554bc2",
+  "ukuran_model_byte": 2847440,
+  "sha256_labels": "fecece75437c3a16d0a84d31f7738610d17c4c8d2206214d1c3215d1bea46c44",
+  "peringatan": "Model ini bukan berkas bobot asli penulis jurnal. Kesetaraan arsitektur tidak berarti identitas artefak atau reproduksi angka yang sama."
+}

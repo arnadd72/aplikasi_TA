@@ -1,0 +1,60 @@
+name: padi_scan
+description: "Aplikasi identifikasi penyakit daun padi berbasis citra menggunakan MobileNetV2 dan rekomendasi penanganan."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Inferensi model TensorFlow Lite di perangkat (Tabel 3.1 no. 5).
+  # v0.12.1 menarik runtime LiteRT 1.4.0; v0.11.0 menarik TFLite 2.11.0
+  # yang tidak mengenal op FULLY_CONNECTED versi 12 keluaran TensorFlow 2.21.
+  tflite_flutter: ^0.12.1
+  # Basis data lokal SQLite (Tabel 3.1 no. 6)
+  sqflite: ^2.3.3
+  path: ^1.9.0
+  path_provider: ^2.1.4
+  # Kamera dan galeri (F-01, F-02)
+  image_picker: ^1.1.2
+  # Prapemrosesan citra: resize 224x224 + normalisasi 1/255
+  image: ^4.2.0
+  # Membagikan berkas ekspor riwayat (CSV) tanpa jaringan
+  share_plus: ^10.1.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/models/
+    - assets/data/
+
+  # Tipografi "Friendly SaaS" (Plus Jakarta Sans) dari
+  # design-system/padi-scan/MASTER.md. Font disimpan lokal dan tidak
+  # diunduh saat aplikasi berjalan agar NF-01 (sepenuhnya offline) tetap
+  # terpenuhi.
+  fonts:
+    - family: PlusJakartaSans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/PlusJakartaSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/PlusJakartaSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/PlusJakartaSans-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/PlusJakartaSans-ExtraBold.ttf
+          weight: 800
