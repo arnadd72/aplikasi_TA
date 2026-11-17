@@ -1,12 +1,6 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../data/catatan_lapangan_repository.dart';
-import '../data/database_helper.dart';
-import '../logic/photo_quality_checker.dart';
-import '../logic/tflite_classifier.dart';
 import '../models/catatan_lapangan.dart';
 import '../models/hasil_identifikasi.dart';
 import '../models/penyakit.dart';
@@ -14,9 +8,11 @@ import '../theme/app_tokens.dart';
 import '../utils/format_waktu.dart';
 import '../widgets/komponen.dart';
 import 'detail_riwayat_screen.dart';
+import 'form_pengamatan_screen.dart';
 import 'form_petak_screen.dart';
-import 'hasil_screen.dart';
-import 'photo_preview_screen.dart';
+import 'jadwal_perawatan_screen.dart';
+import 'kamera_identifikasi_screen.dart';
+import 'monitoring_perkembangan_screen.dart';
 
 /// Halaman Detail Lahan, Catatan Pengamatan Manual, Jadwal Perawatan,
 /// dan Monitoring Perkembangan / Perbandingan Foto (PRD F-12, F-13, F-16,
@@ -39,10 +35,6 @@ class _TimelinePetakScreenState extends State<TimelinePetakScreen> {
   late Petak _petak;
   int? _idMusim;
   StatusIdentifikasi? _status;
-  bool _memprosesAi = false;
-
-  final ImagePicker _picker = ImagePicker();
-  final TfliteClassifier _classifier = TfliteClassifier();
 
   List<MusimTanam> _musim = const [];
   List<Riwayat> _riwayat = const [];
@@ -56,12 +48,6 @@ class _TimelinePetakScreenState extends State<TimelinePetakScreen> {
     super.initState();
     _petak = widget.petak;
     _muatSemua();
-  }
-
-  @override
-  void dispose() {
-    _classifier.tutup();
-    super.dispose();
   }
 
   Future<void> _muatSemua() async {
@@ -114,300 +100,56 @@ class _TimelinePetakScreenState extends State<TimelinePetakScreen> {
     }
   }
 
-  /// Alur 11.2 PRD: Identifikasi Terkait Lahan langsung dari Detail Lahan.
-  Future<void> _tambahPemeriksaanAi() async {
-    if (_memprosesAi) return;
-    final sumber = await showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Ambil Foto dengan Kamera'),
-              onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Pilih dari Galeri'),
-              onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (sumber == null || !mounted) return;
-
-    try {
-      final foto = await _picker.pickImage(
-        source: sumber,
-        maxWidth: 1600,
-        maxHeight: 1600,
-        imageQuality: sumber == ImageSource.camera ? 92 : null,
-      );
-      if (foto == null || !mounted) return;
-      final kualitas = await Navigator.of(context).push<KualitasFoto>(
-        MaterialPageRoute(
-          builder: (_) => PhotoPreviewScreen(pathFoto: foto.path),
-        ),
-      );
-      if (kualitas == null || !mounted) return;
-
-      setState(() => _memprosesAi = true);
-      final path = await DatabaseHelper.instance.salinFotoKeAplikasi(foto.path);
-      final mentah = await _classifier.identifikasi(path);
-      final musimAktif = _musim.where((m) => m.aktif).firstOrNull;
-
-      final idRiwayat = await DatabaseHelper.instance.simpanRiwayat(
-        Riwayat(
-          pathFoto: mentah.pathFoto,
-          idPenyakit: mentah.tidakDikenali ? '' : mentah.idPenyakit,
-          keyakinan: mentah.keyakinan,
-          waktu: mentah.waktu,
-          idPetak: _petak.idPetak,
-          idMusim: musimAktif?.idMusim,
-          status: mentah.tidakDikenali
-              ? StatusIdentifikasi.tidakPasti
-              : mentah.idPenyakit == 'normal'
-              ? StatusIdentifikasi.sehat
-              : StatusIdentifikasi.terklasifikasi,
-          aturan: mentah.aturan,
-          waktuPraprosesMs: mentah.waktuPraprosesMs,
-          waktuInferensiMs: mentah.waktuInferensiMs,
-          waktuTotalMs: mentah.waktuTotalMs,
-          fotoGelap: kualitas.terlaluGelap,
-          fotoBuram: kualitas.buram,
-          modelVersion: TfliteClassifier.versiModel,
-          probabilitasJson: jsonEncode({
-            for (final item in mentah.semuaProbabilitas)
-              item.idPenyakit: item.nilai,
-          }),
-        ),
-      );
-
-      final hasil = HasilIdentifikasi(
-        idPenyakit: mentah.idPenyakit,
-        keyakinan: mentah.keyakinan,
-        semuaProbabilitas: mentah.semuaProbabilitas,
-        tidakDikenali: mentah.tidakDikenali,
-        waktuInferensiMs: mentah.waktuInferensiMs,
-        waktuPraprosesMs: mentah.waktuPraprosesMs,
-        waktuTotalMs: mentah.waktuTotalMs,
-        aturan: mentah.aturan,
-        peringatanKualitas: kualitas.peringatan,
-        pathFoto: mentah.pathFoto,
-        waktu: mentah.waktu,
-        idRiwayat: idRiwayat,
-        idPetak: _petak.idPetak,
-      );
-
-      if (!mounted) return;
-      setState(() => _memprosesAi = false);
-      await Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => HasilScreen(hasil: hasil)));
-      if (mounted) await _muatSemua();
-    } on Object catch (e) {
-      if (!mounted) return;
-      setState(() => _memprosesAi = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Pemeriksaan gagal: $e')));
-    }
-  }
-
-  /// S-13 / F-13: Tambah atau Edit Catatan Pengamatan Manual.
+  /// S-13 / F-13: Buka layar Catatan Pengamatan Manual (FormPengamatanScreen).
   Future<void> _formPengamatan({CatatanPengamatan? awal}) async {
-    final kondisiCtrl = TextEditingController(
-      text: awal?.kondisiTanaman ?? 'Pertumbuhan normal, perlu pemantauan',
-    );
-    final gejalaCtrl = TextEditingController(text: awal?.gejalaDiamati ?? '');
-    final tindakanCtrl = TextEditingController(
-      text: awal?.tindakanDilakukan ?? '',
-    );
-    final catatanCtrl = TextEditingController(
-      text: awal?.catatanTambahan ?? '',
-    );
-    DateTime tanggal = awal?.tanggal ?? DateTime.now();
-
-    final simpan = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(
-            awal == null ? 'Tambah Pengamatan' : 'Edit Pengamatan',
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final pilih = await showDatePicker(
-                      context: ctx,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
-                      initialDate: tanggal,
-                    );
-                    if (pilih != null) {
-                      setDialogState(() => tanggal = pilih);
-                    }
-                  },
-                  icon: const Icon(Icons.calendar_today_outlined, size: 18),
-                  label: Text('Tanggal: ${FormatWaktu.panjang(tanggal)}'),
-                ),
-                const SizedBox(height: AppSpacing.smPlus),
-                TextField(
-                  controller: kondisiCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Kondisi tanaman',
-                    hintText: 'Contoh: Daun mulai menghijau / gejala berkurang',
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.smPlus),
-                TextField(
-                  controller: gejalaCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Gejala yang diamati (opsional)',
-                    hintText: 'Contoh: Bercak pada daun bawah 3 rumpun',
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.smPlus),
-                TextField(
-                  controller: tindakanCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Tindakan yang dilakukan (opsional)',
-                    hintText: 'Contoh: Pengairan berselang & sanitasi gulma',
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.smPlus),
-                TextField(
-                  controller: catatanCtrl,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Catatan tambahan (opsional)',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Simpan'),
-            ),
-          ],
+    final berubah = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => FormPengamatanScreen(
+          idPetakAwal: _petak.idPetak,
+          pengamatanAwal: awal,
+          repository: widget.repository,
         ),
       ),
     );
-
-    if (simpan == true && kondisiCtrl.text.trim().isNotEmpty) {
-      await widget.repository.simpanPengamatan(
-        CatatanPengamatan(
-          idPengamatan: awal?.idPengamatan,
-          idPetak: _petak.idPetak!,
-          tanggal: tanggal,
-          kondisiTanaman: kondisiCtrl.text,
-          gejalaDiamati: gejalaCtrl.text,
-          tindakanDilakukan: tindakanCtrl.text,
-          catatanTambahan: catatanCtrl.text,
-          dibuatPada: awal?.dibuatPada ?? DateTime.now(),
-        ),
-      );
-      if (mounted) await _muatSemua();
+    if (berubah == true && mounted) {
+      await _muatSemua();
     }
-    kondisiCtrl.dispose();
-    gejalaCtrl.dispose();
-    tindakanCtrl.dispose();
-    catatanCtrl.dispose();
   }
 
-  /// S-16 / F-16: Tambah Jadwal Perawatan Lahan.
-  Future<void> _tambahJadwal() async {
-    String jenis = JadwalPerawatan.jenisKegiatanAwal.first;
-    final catatanCtrl = TextEditingController();
-    DateTime tanggal = DateTime.now().add(const Duration(days: 3));
+  /// S-16 / F-16: Buka layar Jadwal Perawatan & Kalender Tanam Lahan.
+  Future<void> _bukaJadwalLahan() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => JadwalPerawatanScreen(idPetakAwal: _petak.idPetak),
+      ),
+    );
+    if (mounted) await _muatSemua();
+  }
 
-    final simpan = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Tambah Jadwal Perawatan'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  initialValue: jenis,
-                  decoration: const InputDecoration(labelText: 'Jenis kegiatan'),
-                  items: [
-                    for (final k in JadwalPerawatan.jenisKegiatanAwal)
-                      DropdownMenuItem(value: k, child: Text(k)),
-                  ],
-                  onChanged: (v) {
-                    if (v != null) setDialogState(() => jenis = v);
-                  },
-                ),
-                const SizedBox(height: AppSpacing.smPlus),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final pilih = await showDatePicker(
-                      context: ctx,
-                      firstDate: DateTime.now().subtract(
-                        const Duration(days: 30),
-                      ),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
-                      initialDate: tanggal,
-                    );
-                    if (pilih != null) {
-                      setDialogState(() => tanggal = pilih);
-                    }
-                  },
-                  icon: const Icon(Icons.event_outlined, size: 18),
-                  label: Text('Jadwal: ${FormatWaktu.panjang(tanggal)}'),
-                ),
-                const SizedBox(height: AppSpacing.smPlus),
-                TextField(
-                  controller: catatanCtrl,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Catatan kegiatan (opsional)',
-                    hintText: 'Contoh: Periksa daun bendera blok timur',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Simpan Jadwal'),
-            ),
-          ],
+  /// S-17 / F-18 & F-19: Buka layar Monitoring Perkembangan & Perbandingan Foto.
+  Future<void> _bukaMonitoringLahan() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) =>
+            MonitoringPerkembanganScreen(idPetakAwal: _petak.idPetak),
+      ),
+    );
+    if (mounted) await _muatSemua();
+  }
+
+  /// S-04: Buka layar Kamera Identifikasi terkait lahan ini.
+  Future<void> _bukaKameraLahan() async {
+    final musimAktif = _musim.where((m) => m.aktif).firstOrNull;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => KameraIdentifikasiScreen(
+          idPetakAwal: _petak.idPetak,
+          idMusimAwal: musimAktif?.idMusim,
+          namaPetakAwal: _petak.nama,
         ),
       ),
     );
-
-    if (simpan == true) {
-      await widget.repository.simpanJadwal(
-        JadwalPerawatan(
-          idPetak: _petak.idPetak!,
-          judul: jenis,
-          catatan: catatanCtrl.text,
-          tanggalJadwal: tanggal,
-        ),
-      );
-      if (mounted) await _muatSemua();
-    }
-    catatanCtrl.dispose();
+    if (mounted) await _muatSemua();
   }
 
   /// S-17 / F-19: Perbandingan Foto Sebelum vs Sesudah.
@@ -591,15 +333,9 @@ class _TimelinePetakScreenState extends State<TimelinePetakScreen> {
                             runSpacing: AppSpacing.sm,
                             children: [
                               FilledButton.icon(
-                                onPressed: _memprosesAi
-                                    ? null
-                                    : _tambahPemeriksaanAi,
+                                onPressed: _bukaKameraLahan,
                                 icon: const Icon(Icons.add_a_photo_outlined),
-                                label: Text(
-                                  _memprosesAi
-                                      ? 'Memeriksa…'
-                                      : 'Tambah Pemeriksaan',
-                                ),
+                                label: const Text('Tambah Pemeriksaan'),
                               ),
                               OutlinedButton.icon(
                                 onPressed: () => _formPengamatan(),
@@ -607,9 +343,14 @@ class _TimelinePetakScreenState extends State<TimelinePetakScreen> {
                                 label: const Text('Tambah Pengamatan'),
                               ),
                               OutlinedButton.icon(
-                                onPressed: _tambahJadwal,
+                                onPressed: _bukaJadwalLahan,
                                 icon: const Icon(Icons.event_available_outlined),
-                                label: const Text('Tambah Jadwal'),
+                                label: const Text('Jadwal Perawatan'),
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: _bukaMonitoringLahan,
+                                icon: const Icon(Icons.compare_outlined),
+                                label: const Text('Monitoring & Foto'),
                               ),
                             ],
                           ),

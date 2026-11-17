@@ -703,6 +703,127 @@ class DatabaseHelper {
     ];
   }
 
+  /// Mengambil seluruh jadwal perawatan (mendatang maupun selesai) beserta
+  /// nama lahan, opsional disaring berdasarkan `idPetak` (PRD F-16 & S-16).
+  Future<List<JadwalPerawatan>> semuaJadwal({int? idPetak}) async {
+    final db = await database;
+    final petakRows = await db.query('petak');
+    final petaPetak = <int, String>{
+      for (final r in petakRows)
+        if (r['id_petak'] is int) r['id_petak'] as int: r['nama'] as String,
+    };
+    final rows = await db.query(
+      'jadwal_perawatan',
+      where: idPetak != null ? 'id_petak = ?' : null,
+      whereArgs: idPetak != null ? [idPetak] : null,
+      orderBy:
+          "CASE status WHEN 'pending' THEN 0 ELSE 1 END, tanggal_jadwal ASC",
+    );
+    return [
+      for (final r in rows)
+        JadwalPerawatan.fromDb(
+          r,
+          namaPetak: petaPetak[r['id_petak'] as int? ?? -1],
+        ),
+    ];
+  }
+
+  /// Ringkasan catatan pemeriksaan/pengamatan terbaru untuk setiap lahan
+  /// agar kartu pada halaman Lahan Saya (PRD S-10) menampilkan kondisi terkini.
+  Future<Map<int, String>> ringkasanPemeriksaanTerbaruPerPetak() async {
+    final db = await database;
+    final hasil = <int, String>{};
+
+    final riwayatRows = await db.query('riwayat', orderBy: 'waktu DESC');
+    for (final r in riwayatRows) {
+      final idPetak = r['id_petak'] as int?;
+      if (idPetak == null || hasil.containsKey(idPetak)) continue;
+      final idPenyakit = (r['id_penyakit'] as String?) ?? '';
+      final nama = idPenyakit.isEmpty
+          ? 'Belum meyakinkan (<70%)'
+          : Penyakit.namaDariId(idPenyakit);
+      final skor = (((r['keyakinan'] as num?)?.toDouble() ?? 0.0) * 100)
+          .toStringAsFixed(0);
+      hasil[idPetak] = 'Pemeriksaan terakhir: $nama ($skor%)';
+    }
+
+    final pengamatanRows = await db.query(
+      'pengamatan',
+      orderBy: 'tanggal DESC, id_pengamatan DESC',
+    );
+    for (final pRow in pengamatanRows) {
+      final idPetak = pRow['id_petak'] as int?;
+      if (idPetak == null || hasil.containsKey(idPetak)) continue;
+      final kondisi = (pRow['kondisi_tanaman'] as String?) ?? '';
+      if (kondisi.isNotEmpty) {
+        hasil[idPetak] = 'Pengamatan: $kondisi';
+      }
+    }
+
+    return hasil;
+  }
+
+  /// Menyusun struktur JSON cadangan lokal (PRD F-27 Backup Lokal).
+  Future<Map<String, dynamic>> buatBackupLokal() async {
+    final db = await database;
+    final petak = await db.query('petak', orderBy: 'id_petak ASC');
+    final musim = await db.query('musim_tanam', orderBy: 'id_musim ASC');
+    final riwayat = await db.query('riwayat', orderBy: 'id_riwayat ASC');
+    final pengamatan = await db.query(
+      'pengamatan',
+      orderBy: 'id_pengamatan ASC',
+    );
+    final jadwal = await db.query(
+      'jadwal_perawatan',
+      orderBy: 'id_jadwal ASC',
+    );
+
+    return <String, dynamic>{
+      'versi_backup': 1,
+      'versi_db': _dbVersion,
+      'dibuat_pada': DateTime.now().toIso8601String(),
+      'petak': petak,
+      'musim_tanam': musim,
+      'riwayat': riwayat,
+      'pengamatan': pengamatan,
+      'jadwal_perawatan': jadwal,
+    };
+  }
+
+  /// Memulihkan data dari berkas JSON cadangan lokal (PRD F-27 Backup Lokal).
+  /// Mengembalikan jumlah baris data yang berhasil dipulihkan.
+  Future<int> pulihkanBackupLokal(Map<String, dynamic> backup) async {
+    final db = await database;
+    var total = 0;
+
+    await db.transaction((txn) async {
+      for (final entry in const <(String, String)>[
+        ('petak', 'id_petak'),
+        ('musim_tanam', 'id_musim'),
+        ('riwayat', 'id_riwayat'),
+        ('pengamatan', 'id_pengamatan'),
+        ('jadwal_perawatan', 'id_jadwal'),
+      ]) {
+        final (tabel, _) = entry;
+        final list = backup[tabel];
+        if (list is! List) continue;
+        for (final item in list) {
+          if (item is Map) {
+            await txn.insert(
+              tabel,
+              Map<String, Object?>.from(item),
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
+            total++;
+          }
+        }
+      }
+    });
+
+    perubahanRiwayat.value++;
+    return total;
+  }
+
   Future<void> ubahStatusJadwal(int idJadwal, bool selesai) async {
     final db = await database;
     await db.update(

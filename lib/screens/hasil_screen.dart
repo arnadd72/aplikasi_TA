@@ -7,6 +7,7 @@ import '../models/penyakit.dart';
 import '../theme/app_tokens.dart';
 import '../utils/format_waktu.dart';
 import '../widgets/komponen.dart';
+import 'detail_penyakit_screen.dart';
 import 'rekomendasi_screen.dart';
 
 /// Halaman Hasil Identifikasi sesuai PRD F-06, F-07, dan S-07.
@@ -120,6 +121,22 @@ class _HasilScreenState extends State<HasilScreen> {
     );
   }
 
+  void _bukaDetailPenyakit() {
+    final p =
+        _penyakit ??
+        Penyakit(
+          idPenyakit: widget.hasil.idPenyakit,
+          labelModel: widget.hasil.idPenyakit,
+          nama: Penyakit.namaDariId(widget.hasil.idPenyakit),
+          namaLatin: '-',
+          penyebab: '-',
+          gejala: Penyakit.penjelasanDariId(widget.hasil.idPenyakit),
+        );
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => DetailPenyakitScreen(penyakit: p)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasil = widget.hasil;
@@ -178,6 +195,12 @@ class _HasilScreenState extends State<HasilScreen> {
                               : 'Lihat Rekomendasi Penanganan',
                         ),
                       ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    OutlinedButton.icon(
+                      onPressed: _bukaDetailPenyakit,
+                      icon: const Icon(Icons.menu_book_outlined),
+                      label: const Text('Lihat Detail Penyakit & Gejala'),
                     ),
                     const SizedBox(height: AppSpacing.smPlus),
                   ],

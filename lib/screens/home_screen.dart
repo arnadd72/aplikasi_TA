@@ -13,15 +13,18 @@ import '../models/penyakit.dart';
 import '../theme/app_tokens.dart';
 import '../utils/format_waktu.dart';
 import '../widgets/komponen.dart';
+import 'detail_penyakit_screen.dart';
 import 'detail_riwayat_screen.dart';
+import 'form_pengamatan_screen.dart';
 import 'form_petak_screen.dart';
 import 'hasil_screen.dart';
 import 'informasi_screen.dart';
+import 'jadwal_perawatan_screen.dart';
+import 'kamera_identifikasi_screen.dart';
 import 'panduan_foto_screen.dart';
 import 'pengaturan_screen.dart';
 import 'petak_screen.dart';
 import 'photo_preview_screen.dart';
-import 'rekomendasi_screen.dart';
 import 'riwayat_screen.dart';
 import 'timeline_petak_screen.dart';
 
@@ -98,59 +101,6 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } on Object catch (e) {
       debugPrint('[Home] gagal memuat ringkasan lokal: $e');
-    }
-  }
-
-  Future<void> _tampilkanPilihanSumber({int? idPetakAwal}) async {
-    if (_memproses) return;
-    final sumber = await showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.horizontal,
-            AppSpacing.xs,
-            AppSpacing.horizontal,
-            AppSpacing.md,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Identifikasi Penyakit Daun', style: ctx.teks.titleLarge),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'Pastikan satu helai daun terlihat jelas dan tidak buram.',
-                style: ctx.teks.bodySmall,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              FilledButton.icon(
-                onPressed: () => Navigator.of(ctx).pop(ImageSource.camera),
-                icon: const Icon(Icons.photo_camera_outlined),
-                label: const Text('Ambil Foto Daun (Kamera)'),
-              ),
-              const SizedBox(height: AppSpacing.smPlus),
-              OutlinedButton.icon(
-                onPressed: () => Navigator.of(ctx).pop(ImageSource.gallery),
-                icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('Pilih dari Galeri'),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              TextButton.icon(
-                onPressed: () {
-                  Navigator.of(ctx).pop();
-                  _buka(const PanduanFotoScreen());
-                },
-                icon: const Icon(Icons.help_outline_rounded),
-                label: const Text('Lihat Panduan Pengambilan Foto'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (sumber != null && mounted) {
-      await _ambilFoto(sumber, idPetakAwal: idPetakAwal);
     }
   }
 
@@ -276,6 +226,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 await _muatDataRingkasan();
               },
               child: CustomScrollView(
+                cacheExtent: 1000,
                 slivers: [
                   SliverToBoxAdapter(
                     child: _HeaderBeranda(
@@ -296,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           aktif: !_memproses,
                           modelSiap: _modelSiap,
                           onIdentifikasiSekarang: () =>
-                              _tampilkanPilihanSumber(),
+                              _buka(const KameraIdentifikasiScreen()),
                           onKamera: () => _ambilFoto(ImageSource.camera),
                           onGaleri: () => _ambilFoto(ImageSource.gallery),
                           onPanduan: () => _buka(const PanduanFotoScreen()),
@@ -344,17 +295,23 @@ class _HomeScreenState extends State<HomeScreen> {
                           onBukaDetail: (r) =>
                               _buka(DetailRiwayatScreen(riwayat: r)),
                         ),
-                        if (_pengamatanTerbaru.isNotEmpty) ...[
+                        if (_pengamatanTerbaru.isNotEmpty ||
+                            _daftarLahan.isNotEmpty) ...[
                           const SizedBox(height: AppSpacing.lg),
                           _BagianPengamatanTerbaru(
                             daftar: _pengamatanTerbaru,
                             daftarLahan: _daftarLahan,
+                            onTambahPengamatan: () =>
+                                _buka(const FormPengamatanScreen()),
                           ),
                         ],
-                        if (_jadwalMendatang.isNotEmpty) ...[
+                        if (_jadwalMendatang.isNotEmpty ||
+                            _daftarLahan.isNotEmpty) ...[
                           const SizedBox(height: AppSpacing.lg),
                           _BagianJadwalTerdekat(
                             jadwal: _jadwalMendatang,
+                            onBukaSemuaJadwal: () =>
+                                _buka(const JadwalPerawatanScreen()),
                             onTandaiSelesai: (item) async {
                               if (item.idJadwal == null) return;
                               await DatabaseHelper.instance.ubahStatusJadwal(
@@ -376,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             }
                           },
                           onBukaPenyakit: (penyakit) =>
-                              _buka(RekomendasiScreen(penyakit: penyakit)),
+                              _buka(DetailPenyakitScreen(penyakit: penyakit)),
                         ),
                         const SizedBox(height: AppSpacing.lg),
                         const _CaraPakai(),
@@ -564,26 +521,34 @@ class _KartuTindakanUtama extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
-            Semantics(
-              button: true,
-              enabled: aktif,
-              label: 'Ambil foto daun dengan kamera',
-              child: OutlinedButton.icon(
-                onPressed: aktif ? onKamera : null,
-                icon: const Icon(Icons.photo_camera_outlined),
-                label: const Text('Ambil Foto Daun'),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Semantics(
-              button: true,
-              enabled: aktif,
-              label: 'Pilih foto daun dari galeri',
-              child: OutlinedButton.icon(
-                onPressed: aktif ? onGaleri : null,
-                icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('Pilih dari Galeri'),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Semantics(
+                    button: true,
+                    enabled: aktif,
+                    label: 'Ambil foto daun dengan kamera',
+                    child: OutlinedButton.icon(
+                      onPressed: aktif ? onKamera : null,
+                      icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                      label: const Text('Ambil Foto Daun'),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Semantics(
+                    button: true,
+                    enabled: aktif,
+                    label: 'Pilih foto daun dari galeri',
+                    child: OutlinedButton.icon(
+                      onPressed: aktif ? onGaleri : null,
+                      icon: const Icon(Icons.photo_library_outlined, size: 18),
+                      label: const Text('Pilih dari Galeri'),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.xs),
             Align(
@@ -878,10 +843,12 @@ class _BagianPengamatanTerbaru extends StatelessWidget {
   const _BagianPengamatanTerbaru({
     required this.daftar,
     required this.daftarLahan,
+    required this.onTambahPengamatan,
   });
 
   final List<CatatanPengamatan> daftar;
   final List<Petak> daftarLahan;
+  final VoidCallback onTambahPengamatan;
 
   @override
   Widget build(BuildContext context) {
@@ -889,106 +856,181 @@ class _BagianPengamatanTerbaru extends StatelessWidget {
       for (final l in daftarLahan)
         if (l.idPetak != null) l.idPetak!: l.nama,
     };
-    final terbaru = daftar.first;
-    final namaLahan = petaNama[terbaru.idPetak] ?? 'Lahan';
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Pengamatan Terbaru', style: context.teks.titleLarge),
-        const SizedBox(height: AppSpacing.sm),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.assignment_outlined,
-                      size: 18,
-                      color: context.palet.primary,
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        '$namaLahan · ${terbaru.kondisiTanaman}',
-                        style: context.teks.titleSmall,
-                      ),
-                    ),
-                    Text(
-                      FormatWaktu.angka(terbaru.tanggal),
-                      style: context.teks.labelSmall,
-                    ),
-                  ],
-                ),
-                if (terbaru.gejalaDiamati.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    'Gejala: ${terbaru.gejalaDiamati}',
-                    style: context.teks.bodySmall,
-                  ),
-                ],
-                if (terbaru.tindakanDilakukan.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    'Tindakan: ${terbaru.tindakanDilakukan}',
-                    style: context.teks.bodySmall,
-                  ),
-                ],
-              ],
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text('Pengamatan Terbaru', style: context.teks.titleLarge),
             ),
-          ),
+            if (daftarLahan.isNotEmpty)
+              TextButton.icon(
+                onPressed: onTambahPengamatan,
+                icon: const Icon(Icons.note_add_outlined, size: 18),
+                label: const Text('Catat'),
+              ),
+          ],
         ),
+        const SizedBox(height: AppSpacing.xs),
+        if (daftar.isEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Text(
+                daftarLahan.isEmpty
+                    ? 'Tambahkan lahan terlebih dahulu untuk mencatat hasil pengamatan lapangan.'
+                    : 'Belum ada catatan pengamatan manual. Tekan "Catat" untuk mencatat perkembangan tanaman.',
+                style: context.teks.bodySmall,
+              ),
+            ),
+          )
+        else
+          Builder(
+            builder: (context) {
+              final terbaru = daftar.first;
+              final namaLahan = petaNama[terbaru.idPetak] ?? 'Lahan';
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.assignment_outlined,
+                            size: 18,
+                            color: context.palet.primary,
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              '$namaLahan · ${terbaru.kondisiTanaman}',
+                              style: context.teks.titleSmall,
+                            ),
+                          ),
+                          Text(
+                            FormatWaktu.angka(terbaru.tanggal),
+                            style: context.teks.labelSmall,
+                          ),
+                        ],
+                      ),
+                      if (terbaru.gejalaDiamati.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'Gejala: ${terbaru.gejalaDiamati}',
+                          style: context.teks.bodySmall,
+                        ),
+                      ],
+                      if (terbaru.tindakanDilakukan.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'Tindakan: ${terbaru.tindakanDilakukan}',
+                          style: context.teks.bodySmall,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
       ],
     );
   }
 }
 
-/// Jadwal perawatan terdekat (PRD F-02 & F-16).
+/// Jadwal perawatan terdekat (PRD F-02, F-16, S-03, S-16).
 class _BagianJadwalTerdekat extends StatelessWidget {
   const _BagianJadwalTerdekat({
     required this.jadwal,
+    required this.onBukaSemuaJadwal,
     required this.onTandaiSelesai,
   });
 
   final List<JadwalPerawatan> jadwal;
+  final VoidCallback onBukaSemuaJadwal;
   final ValueChanged<JadwalPerawatan> onTandaiSelesai;
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Jadwal Perawatan Terdekat', style: context.teks.titleLarge),
-        const SizedBox(height: AppSpacing.sm),
-        for (final item in jadwal.take(2))
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: Card(
-              child: ListTile(
-                leading: Icon(
-                  Icons.event_note_outlined,
-                  color: context.palet.primary,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                'Jadwal Perawatan Terdekat',
+                style: context.teks.titleLarge,
+              ),
+            ),
+            TextButton(
+              onPressed: onBukaSemuaJadwal,
+              child: const Text('Kelola Jadwal'),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        if (jadwal.isEmpty)
+          Card(
+            child: InkWell(
+              onTap: onBukaSemuaJadwal,
+              borderRadius: BorderRadius.circular(AppRadius.sedang),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.event_available_outlined,
+                      color: context.palet.primary,
+                      size: AppIkon.besar,
+                    ),
+                    const SizedBox(width: AppSpacing.smPlus),
+                    Expanded(
+                      child: Text(
+                        'Belum ada jadwal kegiatan terdekat. Ketuk untuk mengatur '
+                        'jadwal pemeriksaan daun, pemupukan, atau pengairan.',
+                        style: context.teks.bodySmall,
+                      ),
+                    ),
+                  ],
                 ),
-                title: Text(item.judul, style: context.teks.titleSmall),
-                subtitle: Text(
-                  '${item.namaPetak ?? 'Lahan'} · '
-                  '${FormatWaktu.panjang(item.tanggalJadwal)}',
-                  style: context.teks.labelMedium,
-                ),
-                trailing: IconButton(
-                  tooltip: 'Tandai selesai',
-                  onPressed: () => onTandaiSelesai(item),
-                  icon: Icon(
-                    Icons.check_circle_outline,
+              ),
+            ),
+          )
+        else
+          for (final item in jadwal.take(2))
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Card(
+                child: ListTile(
+                  onTap: onBukaSemuaJadwal,
+                  leading: Icon(
+                    Icons.event_note_outlined,
                     color: context.palet.primary,
+                  ),
+                  title: Text(item.judul, style: context.teks.titleSmall),
+                  subtitle: Text(
+                    '${item.namaPetak ?? 'Lahan'} · '
+                    '${FormatWaktu.panjang(item.tanggalJadwal)}',
+                    style: context.teks.labelMedium,
+                  ),
+                  trailing: IconButton(
+                    tooltip: 'Tandai selesai',
+                    onPressed: () => onTandaiSelesai(item),
+                    icon: Icon(
+                      Icons.check_circle_outline,
+                      color: context.palet.primary,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
       ],
     );
   }

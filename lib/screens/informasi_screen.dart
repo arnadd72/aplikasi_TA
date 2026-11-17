@@ -5,8 +5,8 @@ import '../data/pengaturan.dart';
 import '../models/penyakit.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/komponen.dart';
+import 'detail_penyakit_screen.dart';
 import 'panduan_foto_screen.dart';
-import 'rekomendasi_screen.dart';
 
 /// Halaman Pustaka Penyakit & Edukasi (PRD F-10, F-21, F-24, F-25, S-14, S-15).
 ///
@@ -197,7 +197,7 @@ class _KartuPenyakit extends StatelessWidget {
         child: InkWell(
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => RekomendasiScreen(penyakit: penyakit),
+              builder: (_) => DetailPenyakitScreen(penyakit: penyakit),
             ),
           ),
           borderRadius: BorderRadius.circular(AppRadius.sedang),

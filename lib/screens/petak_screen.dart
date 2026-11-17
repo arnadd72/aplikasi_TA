@@ -29,6 +29,7 @@ class PetakScreen extends StatefulWidget {
 
 class _PetakScreenState extends State<PetakScreen> {
   late Future<List<Petak>> _future;
+  Map<int, String> _catatanTerbaru = const {};
 
   @override
   void initState() {
@@ -36,7 +37,38 @@ class _PetakScreenState extends State<PetakScreen> {
     _muat();
   }
 
-  void _muat() => _future = widget.repository.semuaPetak();
+  void _muat() {
+    _future = _ambilPetakDanRingkasan();
+  }
+
+  Future<List<Petak>> _ambilPetakDanRingkasan() async {
+    final daftar = await widget.repository.semuaPetak();
+    final ringkasan = <int, String>{};
+    for (final p in daftar) {
+      final id = p.idPetak;
+      if (id == null) continue;
+      try {
+        final riwayat = await widget.repository.timelinePetak(id);
+        if (riwayat.isNotEmpty) {
+          final r = riwayat.first;
+          final label = r.idPenyakit.isEmpty
+              ? 'Belum meyakinkan (<70%)'
+              : (r.penyakit?.nama ?? r.idPenyakit);
+          ringkasan[id] =
+              'Pemeriksaan terbaru: $label (${(r.keyakinan * 100).toStringAsFixed(0)}%)';
+          continue;
+        }
+        final pengamatan = await widget.repository.pengamatanUntukPetak(id);
+        if (pengamatan.isNotEmpty) {
+          ringkasan[id] = 'Pengamatan terbaru: ${pengamatan.first.kondisiTanaman}';
+        }
+      } on Object catch (e) {
+        debugPrint('[PetakScreen] gagal memuat ringkasan petak $id: $e');
+      }
+    }
+    _catatanTerbaru = ringkasan;
+    return daftar;
+  }
 
   Future<void> _tambah() async {
     final berubah = await Navigator.of(context).push<bool>(
@@ -339,6 +371,30 @@ class _PetakScreenState extends State<PetakScreen> {
                             style: context.teks.bodySmall,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                        if (petak.idPetak != null &&
+                            _catatanTerbaru.containsKey(petak.idPetak)) ...[
+                          const SizedBox(height: AppSpacing.xs),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.fact_check_outlined,
+                                size: 15,
+                                color: context.palet.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  _catatanTerbaru[petak.idPetak]!,
+                                  style: context.teks.labelMedium?.copyWith(
+                                    color: context.palet.primaryDark,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                         const SizedBox(height: AppSpacing.md),

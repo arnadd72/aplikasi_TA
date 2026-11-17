@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -220,6 +221,74 @@ class _PengaturanScreenState extends State<PengaturanScreen> {
     }
   }
 
+  /// F-27 Backup Lokal: Menyimpan & membagikan berkas JSON cadangan lokal.
+  Future<void> _eksporBackupLokal() async {
+    setState(() => _sibuk = true);
+    try {
+      final data = await DatabaseHelper.instance.buatBackupLokal();
+      final jsonStr = const JsonEncoder.withIndent('  ').convert(data);
+      final dir = await getApplicationDocumentsDirectory();
+      final berkas = File(p.join(dir.path, 'backup_padi_scan_terbaru.json'));
+      await berkas.writeAsString(jsonStr);
+
+      if (!mounted) return;
+      await Share.shareXFiles(
+        [XFile(berkas.path, mimeType: 'application/json')],
+        subject: 'Backup Lokal Padi Scan (JSON)',
+        text: 'Cadangan data lokal Padi Scan.',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cadangan lokal berhasil disimpan & dibagikan.'),
+        ),
+      );
+    } on Object catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Backup lokal gagal: $e')));
+    } finally {
+      if (mounted) setState(() => _sibuk = false);
+    }
+  }
+
+  /// F-27 Pulihkan Backup Lokal: Memulihkan data dari berkas cadangan lokal terakhir.
+  Future<void> _pulihkanBackupLokal() async {
+    setState(() => _sibuk = true);
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final berkas = File(p.join(dir.path, 'backup_padi_scan_terbaru.json'));
+      if (!await berkas.exists()) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Berkas cadangan lokal belum ditemukan di perangkat ini.',
+            ),
+          ),
+        );
+        return;
+      }
+      final raw = await berkas.readAsString();
+      final map = jsonDecode(raw) as Map<String, dynamic>;
+      final jumlah = await DatabaseHelper.instance.pulihkanBackupLokal(map);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Berhasil memulihkan $jumlah baris data lokal.'),
+        ),
+      );
+    } on Object catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal memulihkan backup: $e')));
+    } finally {
+      if (mounted) setState(() => _sibuk = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final mode = PengaturanStore.instance.modeTema.value;
@@ -346,6 +415,18 @@ class _PengaturanScreenState extends State<PengaturanScreen> {
                   ),
                   icon: const Icon(Icons.insights_outlined),
                   label: const Text('Ringkasan Penyimpanan & Statistik'),
+                ),
+                const SizedBox(height: AppSpacing.smPlus),
+                OutlinedButton.icon(
+                  onPressed: _sibuk ? null : _eksporBackupLokal,
+                  icon: const Icon(Icons.backup_outlined),
+                  label: const Text('Simpan & Bagikan Backup Lokal (JSON)'),
+                ),
+                const SizedBox(height: AppSpacing.smPlus),
+                OutlinedButton.icon(
+                  onPressed: _sibuk ? null : _pulihkanBackupLokal,
+                  icon: const Icon(Icons.restore_outlined),
+                  label: const Text('Pulihkan dari Backup Lokal'),
                 ),
                 const SizedBox(height: AppSpacing.smPlus),
                 Semantics(

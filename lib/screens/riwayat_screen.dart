@@ -8,6 +8,7 @@ import '../theme/app_tokens.dart';
 import '../utils/format_waktu.dart';
 import '../widgets/komponen.dart';
 import 'detail_riwayat_screen.dart';
+import 'kamera_identifikasi_screen.dart';
 
 /// Halaman Riwayat Identifikasi sesuai PRD F-09, F-20, dan S-09.
 ///
@@ -29,6 +30,8 @@ class RiwayatScreen extends StatefulWidget {
 
 enum _Urutan { terbaru, terlama, keyakinan }
 
+enum _RentangTanggal { semua, tujuhHari, tigaPuluhHari }
+
 class _DataRiwayatLengkap {
   final List<Riwayat> riwayat;
   final List<Petak> lahan;
@@ -39,6 +42,7 @@ class _DataRiwayatLengkap {
 class _RiwayatScreenState extends State<RiwayatScreen> {
   late Future<_DataRiwayatLengkap> _future;
   _Urutan _urutan = _Urutan.terbaru;
+  _RentangTanggal _rentangTanggal = _RentangTanggal.semua;
   String _kueri = '';
   String? _filterKelas;
   int? _filterLahan;
@@ -74,9 +78,18 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
 
   List<Riwayat> _terapkan(List<Riwayat> data) {
     final kueri = _kueri.trim().toLowerCase();
+    final sekarang = DateTime.now();
     var hasil = data.where((r) {
       if (_filterKelas != null && r.idPenyakit != _filterKelas) return false;
       if (_filterLahan != null && r.idPetak != _filterLahan) return false;
+      if (_rentangTanggal == _RentangTanggal.tujuhHari &&
+          sekarang.difference(r.waktu).inDays > 7) {
+        return false;
+      }
+      if (_rentangTanggal == _RentangTanggal.tigaPuluhHari &&
+          sekarang.difference(r.waktu).inDays > 30) {
+        return false;
+      }
       if (kueri.isEmpty) return true;
       final nama =
           (r.penyakit?.nama ?? Penyakit.namaDariId(r.idPenyakit)).toLowerCase();
@@ -147,6 +160,22 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
             icon: const Icon(Icons.delete_sweep_outlined),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          if (widget.onMulaiIdentifikasi != null) {
+            widget.onMulaiIdentifikasi!();
+          } else {
+            await Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const KameraIdentifikasiScreen(),
+              ),
+            );
+            if (mounted) _muatUlang();
+          }
+        },
+        icon: const Icon(Icons.photo_camera_outlined),
+        label: const Text('Identifikasi'),
       ),
       body: FutureBuilder<_DataRiwayatLengkap>(
         future: _future,
@@ -300,6 +329,11 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       ),
                       const SizedBox(width: AppSpacing.sm),
                     ],
+                    _PemilihTanggal(
+                      nilai: _rentangTanggal,
+                      onUbah: (v) => setState(() => _rentangTanggal = v),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
                     _PemilihUrutan(
                       nilai: _urutan,
                       onUbah: (u) => setState(() => _urutan = u),
@@ -421,6 +455,66 @@ class _ChipFilter extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PemilihTanggal extends StatelessWidget {
+  const _PemilihTanggal({required this.nilai, required this.onUbah});
+
+  final _RentangTanggal nilai;
+  final ValueChanged<_RentangTanggal> onUbah;
+
+  static const _label = {
+    _RentangTanggal.semua: 'Semua Waktu',
+    _RentangTanggal.tujuhHari: '7 Hari',
+    _RentangTanggal.tigaPuluhHari: '30 Hari',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<_RentangTanggal>(
+      initialValue: nilai,
+      tooltip: 'Filter berdasarkan tanggal',
+      onSelected: onUbah,
+      position: PopupMenuPosition.under,
+      itemBuilder: (context) => [
+        for (final e in _RentangTanggal.values)
+          PopupMenuItem(
+            value: e,
+            child: Text(_label[e]!),
+          ),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm + 2,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: nilai != _RentangTanggal.semua
+              ? context.palet.accent
+              : context.palet.card,
+          borderRadius: BorderRadius.circular(AppRadius.kecil),
+          border: Border.all(color: context.palet.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.date_range_outlined,
+              size: 16,
+              color: context.palet.primary,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              _label[nilai]!,
+              style: context.teks.labelMedium?.copyWith(
+                color: context.palet.primaryDark,
+              ),
+            ),
+          ],
         ),
       ),
     );
