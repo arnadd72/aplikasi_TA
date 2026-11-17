@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/catatan_lapangan_repository.dart';
 import '../models/catatan_lapangan.dart';
 import '../models/hasil_identifikasi.dart';
+import '../models/penyakit.dart';
 import '../theme/app_tokens.dart';
 import '../utils/format_waktu.dart';
 import '../widgets/komponen.dart';
@@ -162,7 +163,9 @@ class _TimelinePetakScreenState extends State<TimelinePetakScreen> {
                                   item.penyakit?.nama ??
                                       (item.idPenyakit.isEmpty
                                           ? 'Hasil tidak pasti'
-                                          : item.idPenyakit),
+                                          : Penyakit.namaDariId(
+                                              item.idPenyakit,
+                                            )),
                                 ),
                                 subtitle: Text(
                                   '${FormatWaktu.panjang(item.waktu)} · '

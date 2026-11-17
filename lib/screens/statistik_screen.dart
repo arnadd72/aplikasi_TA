@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/database_helper.dart';
 import '../models/hasil_identifikasi.dart';
+import '../models/penyakit.dart';
 import '../theme/app_tokens.dart';
 import '../utils/format_waktu.dart';
 import '../widgets/komponen.dart';
@@ -182,7 +183,7 @@ class _Isi extends StatelessWidget {
                           bottom: AppSpacing.sm + 2,
                         ),
                         child: Semantics(
-                          label: '${e.key}, ${e.value} hasil',
+                          label: '${Penyakit.namaDariId(e.key)}, ${e.value} hasil',
                           child: ExcludeSemantics(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,7 +192,7 @@ class _Isi extends StatelessWidget {
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        e.key,
+                                        Penyakit.namaDariId(e.key),
                                         style: context.teks.bodySmall,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,

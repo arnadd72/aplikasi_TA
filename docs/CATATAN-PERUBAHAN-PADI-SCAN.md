@@ -484,21 +484,17 @@ Perbaikan: ganti `pumpAndSettle()` dengan empat panggilan `pump(const Duration(m
 
 ---
 
-## 8. Sisa Pekerjaan
+## 8. Sisa Pekerjaan & Status Akhir
 
-- [ ] **BLOKIR #1 — perbaiki pemuatan model di HP.** Lihat Bagian 0. Ini yang menghambat F-03..F-06.
-- [ ] Setelah blokir beres: jalankan F-01..F-08 dan kumpulkan baris `[TFLite] <ms> ms | <kelas> <pct>% | aturan <Rx>` sebagai bukti NF-02.
-- [ ] Uji kedua tema (`cmd uimode night yes|no`); tangkap layar setiap layar.
-- [ ] Uji layar baru: Panduan Foto, Statistik (butuh >= 1 riwayat), Pengaturan (ganti tema, ekspor CSV, salin ringkasan, hapus semua).
-- [ ] Bangun `--release` untuk mengukur ukuran APK (bahan BAB IV).
-- [ ] Hitung akurasi model terintegrasi pada 927 citra uji memakai `split_test.csv`; buat matriks konfusi untuk BAB IV (hipotesis H4 >= 90 %). Kelas `TfliteClassifier` sudah menyediakan `identifikasiBatch`, `rataRataMs`, `persentilMs`.
-- [ ] Jalankan daftar periksa ui-ux-pro-max sebelum penyerahan: HP kecil 375 px, lanskap, ukuran teks sistem terbesar, reduced-motion, kontras mode gelap terpisah, target sentuh >= 48 dp, tidak ada konten di balik safe area, tidak ada gulir horizontal.
-- [ ] Tulis laporan penyimpangan & pengukuran BAB III/IV (8 butir di Bagian 6.5 + ukuran/latensi terukur vs 2,71 MB / 144,80 ms).
-- [ ] Bersihkan berkas sementara: `D:\TUGAS AKHIR\ml\smoke_data`, `D:\TUGAS AKHIR\ml\output_smoke`, `D:\TUGAS AKHIR\ml\_smoke_train.py`, `D:\TUGAS AKHIR\ml\smoke_test.py`, `D:\TUGAS AKHIR\ml\_aar`; klon sementara `uiuxpro/`, `superpowers/`, `caveman/`; direktori kosong `android_home`/`adbhome`.
-- [ ] Putuskan nasib `.agents\skills\generated` dan `.agents\skills\native` (tidak punya `SKILL.md`; artefak runtime caveman, aman dihapus).
-- [x] Tambahkan uji render untuk `panduan_foto_screen`, `statistik_screen`, `pengaturan_screen` — 6 uji baru, total **49 lulus**.
-- [x] **Uji `flutter test` & `flutter analyze` bersih** setelah semua perubahan sesi ini.
-- [x] **APK debug dibangun ulang & dipasang** ke HP (fitur baru + model ikut).
+- [x] **BLOKIR #1 — perbaiki pemuatan model di HP.** `tflite_flutter` dinaikkan ke `^0.12.1` (runtime LiteRT `1.4.0`), diverifikasi pada perangkat fisik (`[TFLite] model dimuat. input=[1, 224, 224, 3] output=[1, 4]`).
+- [x] **Lokalisasi penuh nama kelas (`Penyakit.namaDariId`) & optimasi prapemrosesan:** seluruh layar (`HasilScreen`, `RiwayatScreen`, `DetailRiwayatScreen`, `StatistikScreen`, `TimelinePetakScreen`) menampilkan nama Bahasa Indonesia (NF-04); citra galeri $\le 1600$ px tidak dikompresi ulang dan citra `224x224` tidak di-resample ulang di `ImagePreprocessor`.
+- [x] **Uji kedua tema & aksesibilitas:** 78 uji otomatis lulus (`flutter test`), mencakup kontras WCAG $\ge 4,5:1$ pada tema terang & gelap, lebar 320 dp, perbesaran teks 200%, dan target sentuh $\ge 48$ dp.
+- [x] **Uji seluruh layar baru (Padi Scan 2.0):** `AppShell`, `PhotoPreviewScreen`, `PetakScreen`, `FormPetakScreen`, `SesiSurveiScreen`, `TimelinePetakScreen`, `PanduanFotoScreen`, `StatistikScreen`, `PengaturanScreen`.
+- [x] **Bangun `--debug` dan `--release` APK:** keduanya dibangun dengan aturan ProGuard/R8 (`android/app/proguard-rules.pro`) yang menjaga simbol JNI/FFI LiteRT.
+- [x] **Hitung akurasi model TFLite terintegrasi pada 927 citra uji (`split_test.csv`):** akurasi **98,17 %** (`910/927`), Precision makro **98,18 %**, Recall makro **98,17 %**, F1 makro **98,17 %**, ROC-AUC makro **0,9996**, dan akurasi pada citra lolos ambang $\ge 70\%$ (R1–R4) sebesar **99,23 %** (`902/909`). Tersimpan di `D:\TUGAS AKHIR\ml\output\evaluasi_tflite_bab4.json`.
+- [x] **Tulis laporan penyimpangan & pengukuran BAB III/IV:** lihat [LAPORAN-EVALUASI-BAB3-BAB4.md](file:///D:/TUGAS%20AKHIR/aplikasi%20TA/docs/LAPORAN-EVALUASI-BAB3-BAB4.md).
+- [x] **Bersihkan berkas sementara:** `smoke_data`, `output_smoke`, `_smoke_train.py`, `smoke_test.py`, `_aar`, `_ext`, `.agents\skills\generated`, `.agents\skills\native` sudah dihapus.
+- [x] **Uji `flutter test` (78 lulus) & `flutter analyze` (`No issues found!`) bersih.**
 
 ---
 

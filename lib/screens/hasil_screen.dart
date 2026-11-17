@@ -145,7 +145,7 @@ class _KartuHasil extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sehat = (penyakit?.isSehat ?? false) || hasil.idPenyakit == 'normal';
-    final nama = penyakit?.nama ?? (sehat ? 'Daun Sehat' : hasil.idPenyakit);
+    final nama = penyakit?.nama ?? Penyakit.namaDariId(hasil.idPenyakit);
     final yakin = hasil.keyakinanPersen;
     final warna = context.warnaKeyakinan(yakin);
     final teksStatus = yakin >= 85
@@ -371,7 +371,9 @@ class _TabelProbabilitas extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.sm + 2),
               child: Semantics(
-                label: '${p.idPenyakit}, ${p.persen.toStringAsFixed(2)} persen',
+                label:
+                    '${Penyakit.namaDariId(p.idPenyakit)}, '
+                    '${p.persen.toStringAsFixed(2)} persen',
                 child: ExcludeSemantics(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -380,7 +382,7 @@ class _TabelProbabilitas extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              p.idPenyakit,
+                              Penyakit.namaDariId(p.idPenyakit),
                               style: context.teks.bodySmall?.copyWith(
                                 fontWeight: p.idPenyakit == terpilih
                                     ? FontWeight.w700

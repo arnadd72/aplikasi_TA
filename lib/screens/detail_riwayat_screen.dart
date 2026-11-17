@@ -166,7 +166,8 @@ class _DetailRiwayatScreenState extends State<DetailRiwayatScreen> {
                             Expanded(
                               child: Text(
                                 dikenali
-                                    ? (_penyakit?.nama ?? r.idPenyakit)
+                                    ? (_penyakit?.nama ??
+                                          Penyakit.namaDariId(r.idPenyakit))
                                     : 'Tidak Dikenali',
                                 style: context.teks.headlineSmall?.copyWith(
                                   color: warna,
@@ -282,7 +283,9 @@ class _DetailRiwayatScreenState extends State<DetailRiwayatScreen> {
                 if (_penyakit != null)
                   Semantics(
                     button: true,
-                    label: 'Lihat rekomendasi penanganan',
+                    label: _penyakit!.isSehat
+                        ? 'Lihat saran pemeliharaan'
+                        : 'Lihat rekomendasi penanganan',
                     child: FilledButton.icon(
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(
@@ -290,8 +293,16 @@ class _DetailRiwayatScreenState extends State<DetailRiwayatScreen> {
                               RekomendasiScreen(penyakit: _penyakit!),
                         ),
                       ),
-                      icon: const Icon(Icons.medical_information_outlined),
-                      label: const Text('Lihat Rekomendasi Penanganan'),
+                      icon: Icon(
+                        _penyakit!.isSehat
+                            ? Icons.verified_outlined
+                            : Icons.medical_information_outlined,
+                      ),
+                      label: Text(
+                        _penyakit!.isSehat
+                            ? 'Lihat Saran Pemeliharaan'
+                            : 'Lihat Rekomendasi Penanganan',
+                      ),
                     ),
                   ),
               ],

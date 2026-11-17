@@ -80,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
         source: sumber,
         maxWidth: 1600,
         maxHeight: 1600,
-        imageQuality: 92,
+        imageQuality: sumber == ImageSource.camera ? 92 : null,
       );
       if (foto == null) return;
 

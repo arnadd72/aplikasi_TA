@@ -84,7 +84,7 @@ class _SesiSurveiScreenState extends State<SesiSurveiScreen> {
       source: sumber,
       maxWidth: 1600,
       maxHeight: 1600,
-      imageQuality: 92,
+      imageQuality: sumber == ImageSource.camera ? 92 : null,
     );
     if (foto == null || !mounted) return null;
     final kualitas = await Navigator.of(context).push<KualitasFoto>(

@@ -69,6 +69,16 @@ class Penyakit {
 
   /// Daun sehat tidak perlu menampilkan rekomendasi pengendalian.
   bool get isSehat => idPenyakit == 'normal';
+
+  /// Nama tampilan Bahasa Indonesia berdasarkan ID kelas model (NF-04).
+  static String namaDariId(String id) => switch (id) {
+    'bercak_cokelat' => 'Bercak Cokelat',
+    'blas' => 'Blas (Blas Daun)',
+    'hawar_daun_bakteri' => 'Hawar Daun Bakteri (HDB)',
+    'normal' => 'Daun Sehat',
+    '' => 'Tanpa hasil',
+    _ => id,
+  };
 }
 
 enum KategoriRekomendasi {

@@ -36,12 +36,15 @@ class ImagePreprocessor {
         : decoded.convert(numChannels: 3);
 
     // Interpolasi bilinear seperti default ImageDataGenerator (target_size).
-    final resized = img.copyResize(
-      rgb,
-      width: ukuran,
-      height: ukuran,
-      interpolation: img.Interpolation.linear,
-    );
+    // Jika dimensi sudah tepat 224x224, hindari penyampelan ulang.
+    final resized = (rgb.width == ukuran && rgb.height == ukuran)
+        ? rgb
+        : img.copyResize(
+            rgb,
+            width: ukuran,
+            height: ukuran,
+            interpolation: img.Interpolation.linear,
+          );
 
     final hasil = <List<List<List<double>>>>[];
     final baris = <List<List<double>>>[];
@@ -71,12 +74,14 @@ class ImagePreprocessor {
     final rgb = decoded.numChannels == 3
         ? decoded
         : decoded.convert(numChannels: 3);
-    final resized = img.copyResize(
-      rgb,
-      width: ukuran,
-      height: ukuran,
-      interpolation: img.Interpolation.linear,
-    );
+    final resized = (rgb.width == ukuran && rgb.height == ukuran)
+        ? rgb
+        : img.copyResize(
+            rgb,
+            width: ukuran,
+            height: ukuran,
+            interpolation: img.Interpolation.linear,
+          );
 
     final out = Float32List(ukuran * ukuran * 3);
     var i = 0;

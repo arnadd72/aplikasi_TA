@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/database_helper.dart';
 import '../models/hasil_identifikasi.dart';
+import '../models/penyakit.dart';
 import '../theme/app_tokens.dart';
 import '../utils/format_waktu.dart';
 import '../widgets/komponen.dart';
@@ -47,9 +48,13 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     var hasil = data.where((r) {
       if (_filterKelas != null && r.idPenyakit != _filterKelas) return false;
       if (kueri.isEmpty) return true;
-      final nama = (r.penyakit?.nama ?? r.idPenyakit).toLowerCase();
+      final nama =
+          (r.penyakit?.nama ?? Penyakit.namaDariId(r.idPenyakit)).toLowerCase();
+      final kode = r.idPenyakit.toLowerCase();
       final tanggal = FormatWaktu.ringkas(r.waktu).toLowerCase();
-      return nama.contains(kueri) || tanggal.contains(kueri);
+      return nama.contains(kueri) ||
+          kode.contains(kueri) ||
+          tanggal.contains(kueri);
     }).toList();
 
     switch (_urutan) {
@@ -220,7 +225,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     ),
                     for (final k in kelasAda)
                       _ChipFilter(
-                        label: k.isEmpty ? 'Tanpa hasil' : k,
+                        label: Penyakit.namaDariId(k),
                         aktif: _filterKelas == k,
                         onTap: () => setState(() => _filterKelas = k),
                       ),
@@ -409,7 +414,7 @@ class _KartuRiwayat extends StatelessWidget {
   Widget build(BuildContext context) {
     final dikenali = riwayat.idPenyakit.isNotEmpty;
     final nama = dikenali
-        ? (riwayat.penyakit?.nama ?? riwayat.idPenyakit)
+        ? (riwayat.penyakit?.nama ?? Penyakit.namaDariId(riwayat.idPenyakit))
         : 'Tidak dikenali';
     final yakin = riwayat.keyakinan * 100;
     final warna = dikenali
